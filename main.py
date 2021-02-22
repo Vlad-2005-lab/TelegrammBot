@@ -4,7 +4,9 @@ from data.people import People
 from data.boss import Boss
 from data import db_session
 import time
+import numpy as np
 import datetime
+import re
 
 bot = telebot.TeleBot('1625541968:AAF0Hrv_57dx8x1osP56CxnxSejWu-kWijc')
 print('\033[35mStarting.....')
@@ -172,10 +174,145 @@ def get_text_messages(message):
         #     bot.send_message(message.from_user.id,
         #                      f"Добрый день {message.from_user.username if message.from_user.username else message.from_user.last_name + ' ' + message.from_user.first_name}")
         #     return bot.register_next_step_handler(message, main_menu)
-
-        pass
+        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                     "Расписание обучения"])
+        bot.send_message(message.from_user.id, f"Здраствуйте")
+        bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+        return bot.register_next_step_handler(message, vilka)
     except Exception as er:
         log(message=message, where="get_text_messages", comments=str(er))
+
+
+def vilka(message):
+    try:
+        log(message=message, where="vilka")
+        keyboard = keyboard_creator(["Вернуться к выбору"])
+        if message.text == "Поиск работника":
+            bot.send_message(message.from_user.id, f"Какая у вас вакансия?", reply_markup=keyboard)
+            return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_1)
+        elif message.text == "Поиск работы":
+            bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
+            bot.send_message(message.from_user.id, f"Выбирите что-то из кнопок.")
+            return bot.register_next_step_handler(message, vilka)
+        elif message.text == "Оставить резюме":
+            bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
+            bot.send_message(message.from_user.id, f"Выбирите что-то из кнопок.")
+            return bot.register_next_step_handler(message, vilka)
+        elif message.text == "Запись на обучение":
+            bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
+            bot.send_message(message.from_user.id, f"Выбирите что-то из кнопок.")
+            return bot.register_next_step_handler(message, vilka)
+        elif message.text == "Расписание обучения":
+            bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
+            bot.send_message(message.from_user.id, f"Выбирите что-то из кнопок.")
+            return bot.register_next_step_handler(message, vilka)
+        else:
+            bot.send_message(message.from_user.id, f"Извините, но такого варианта нет.")
+            bot.send_message(message.from_user.id, f"Выбирите что-то из кнопок.")
+            return bot.register_next_step_handler(message, vilka)
+    except Exception as er:
+        log(message=message, full=True, where="vilka", comments=str(er))
+
+
+def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
+    try:
+        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_1")
+        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                     "Расписание обучения"])
+        if message.text == "Вернуться к выбору":
+            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                         "Расписание обучения"])
+            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+            return bot.register_next_step_handler(message, vilka)
+        else:
+            list_of_jobs = str(message.text).replace(";", " ").replace("/", " ").replace(
+                "|", " ").replace("~", " ").replace(":", " ").replace("{", " ").replace("}", " ").replace("[",
+                                                                                                          " ").replace(
+                "]", " ").replace("+", " ").replace("-", " ")
+            # nekotorie mohinacii c vvodom
+            keyboard = keyboard_creator(
+                ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
+                 "Вернуться к выбору"])
+            bot.send_message(message.from_user.id, f"Что вы предлагаете, выберите что-то из списка снизу:" +
+                             f"\nСтажировка" +
+                             f"\nПроектная работа" +
+                             f"\nЧастичная занятость" +
+                             f"\nПолная занятость" +
+                             f"\nВсе варианты", reply_markup=keyboard)
+            return bot.register_next_step_handler(message,
+                                                  porashnaja_funkcia_dla_poiska_rabotnikov_2, list_of_jobs)
+    except Exception as er:
+        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_1", comments=str(er))
+
+
+def porashnaja_funkcia_dla_poiska_rabotnikov_2(message, *args):
+    try:
+        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_2")
+        keyboard = keyboard_creator(
+            ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
+             "Вернуться к выбору"])
+        if message.text == "Вернуться к выбору":
+            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                         "Расписание обучения"])
+            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+            return bot.register_next_step_handler(message, vilka)
+        else:
+            choose = [0, 0, 0, 0]
+            if message.text == "Стажировка":
+                choose[0] = 1
+            elif message.text == "Проектная работа":
+                choose[1] = 1
+            elif message.text == "Частичная занятость":
+                choose[2] = 1
+            elif message.text == "Полная занятость":
+                choose[3] = 1
+            elif message.text == "Все варианты":
+                for i in range(4):
+                    choose[i] = 1
+            else:
+                bot.send_message(message.from_user.id, f"Извините, но такого варианта нет.")
+                bot.send_message(message.from_user.id, f"Выбирите что-то из этого:" +
+                                 f"\nСтажировка" +
+                                 f"\nПроектная работа" +
+                                 f"\nЧастичная занятость" +
+                                 f"\nПолная занятость" +
+                                 f"\nВсе варианты")
+                return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_2, args[0])
+            bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:")
+            return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3, args[0], choose)
+    except Exception as er:
+        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_2", comments=str(er))
+
+
+def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
+    try:
+        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_3")
+        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                     "Расписание обучения"])
+        if message.text == "Вернуться к выбору":
+            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                         "Расписание обучения"])
+            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+            return bot.register_next_step_handler(message, vilka)
+        else:
+            govnolist = re.findall(r"\b\d+k*\b", str(message.text).replace("к", "k"))
+            govnolist = [str(i).replace("k", "000") for i in govnolist]
+            govnolist = list(map(int, govnolist))
+            bot.send_message(message.from_user.id, f"Ничинаем поиск(нет)",
+                             reply_markup=telebot.types.ReplyKeyboardRemove())
+            return bot.register_next_step_handler(message, porasnij_poisk_rabochih, args[0], args[1],
+                                                  sum(govnolist) / len(govnolist))
+    except Exception as er:
+        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
+
+
+def porasnij_poisk_rabochih(message, *args):
+    try:
+        log(message=message, where="porasnij_poisk_rabochih")
+        bot.send_message(message.from_user.id, f"{args}")
+        return bot.register_next_step_handler(message, porasnij_poisk_rabochih, args[0], args[1], args[2])
+    except Exception as er:
+        log(message=message, full=True, where="porasnij_poisk_rabochih", comments=str(er))
 
 
 def main_menu(message):
