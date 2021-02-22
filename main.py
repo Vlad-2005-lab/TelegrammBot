@@ -34,7 +34,8 @@ username: \033[36m{message.from_user.username}\033[33m
 first_name(имя): \033[36m{message.from_user.first_name}\033[33m
 last_name(фамилия): \033[36m{message.from_user.last_name}\033[33m
 text: {message.text}
-message: \033[35m{message}\033[33m""")
+message: \033[35m{message}\033[33m
+comments: \033[31m{comments}\033[33m""")
         except Exception as er:
             print(f"""\033[31m{"-" * 100}\n!ошибка, лог №{count}\n message: {message}
 where: {where}
@@ -75,11 +76,22 @@ def keyboard_creator(list_of_names):
     return returned_k
 
 
-def buttons_creator(dict_of_names):
-    returned_k = types.InlineKeyboardMarkup()
+def buttons_creator(dict_of_names, how_many_rows=7):
+    returned_k = types.InlineKeyboardMarkup(row_width=how_many_rows)
     for i in dict_of_names.keys():
-        exec(f"""button = types.InlineKeyboardButton(text='{i}', callback_data='{dict_of_names[i]}')""")
-        exec(f"""returned_k.add(button)""")
+        if type(dict_of_names[i]) is dict:
+            count = 0
+            for o in dict_of_names[i].keys():
+                count += 1
+                exec(
+                    f"""button{count} = types.InlineKeyboardButton(text='{o}', callback_data='{dict_of_names[i][o]}')""")
+            s = []
+            for p in range(1, count + 1):
+                s.append(f"button{p}")
+            exec(f"""returned_k.add({', '.join(s)})""")
+        else:
+            exec(f"""button = types.InlineKeyboardButton(text='{i}', callback_data='{dict_of_names[i]}')""")
+            exec(f"""returned_k.add(button)""")
     return returned_k
 
 
@@ -278,7 +290,8 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_2(message, *args):
                                  f"\nПолная занятость" +
                                  f"\nВсе варианты")
                 return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_2, args[0])
-            bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:")
+            keyboard = keyboard_creator(["Вернуться к выбору"])
+            bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:", reply_markup=keyboard)
             return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3, args[0], choose)
     except Exception as er:
         log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_2", comments=str(er))
@@ -298,10 +311,41 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
             govnolist = re.findall(r"\b\d+k*\b", str(message.text).replace("к", "k"))
             govnolist = [str(i).replace("k", "000") for i in govnolist]
             govnolist = list(map(int, govnolist))
-            bot.send_message(message.from_user.id, f"Ничинаем поиск(нет)",
+            if govnolist == []:
+                keyboard = keyboard_creator(["Вернуться к выбору"])
+                bot.send_message(message.from_user.id, f"Вы не ввели ЗП, попробуйте ещё раз.", reply_markup=keyboard)
+                return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3, args[0],
+                                                      args[1])
+            bot.send_message(message.from_user.id, f"Начинаем поиск(нет)",
                              reply_markup=telebot.types.ReplyKeyboardRemove())
+            # mahinacii s poiskom
+            list_poiska = ["dodik1" for _ in range(52)]
+            key_dict = {"1": {"<": "back"}}
+            args = list(args)
+            args.append(sum(govnolist) / len(govnolist))
+            text = f"Выданы результаты по запросу:\n\n" + \
+                   f"Вакансия(и): {args[0]}\n" + \
+                   f"Занятость: {'Стажировка' if args[1] == [1, 0, 0, 0] else ('Проектная работа' if args[1] == [0, 1, 0, 0] else ('Частичная занятость' if args[1] == [0, 0, 1, 0] else ('Полная занятость' if args[1] == [0, 0, 0, 1] else 'Все варианты')))}\n" + \
+                   f"Зарплата(примерно): {args[2]}\n\n" + \
+                   f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n" + \
+                   f"1. {list_poiska[0]}\n" + \
+                   f"2. {list_poiska[1]}\n" + \
+                   f"3. {list_poiska[2]}\n" + \
+                   f"4. {list_poiska[3]}\n" + \
+                   f"5. {list_poiska[4]}"
+            if len(list_poiska) > 25:
+                key_dict["1"]["1"] = "1"
+                key_dict["1"]["2"] = "2"
+                key_dict["1"]["3"] = "3"
+                key_dict["1"]["4"] = "4"
+                key_dict["1"]["5"] = "5"
+            else:
+                for i in range(len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1):
+                    key_dict["1"][f"{i + 1}"] = f"{i + 1}"
+            key_dict["1"][">"] = ">"
+            bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
             return bot.register_next_step_handler(message, porasnij_poisk_rabochih, args[0], args[1],
-                                                  sum(govnolist) / len(govnolist))
+                                                  args[2])
     except Exception as er:
         log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
 
@@ -333,14 +377,15 @@ def main_menu(message):
     #     return bot.register_next_step_handler(message, main_menu)
 
 
-# @bot.callback_query_handler(func=lambda call: True)
-# def callback_worker(call):
-#     if call.data == "s1":
-#         keyboard = buttons_creator({"Согласен": "s2",
-#                                     "Нет": "s3"})
-#         bot.send_message(call.from_user.id, "Добрый день, предлагаю вам указать свои данные", reply_markup=keyboard)
-#     else:
-#         print(f'\033[31m!ошибка!\nстрока: 51\033[30m\ncall.data: {call.data}')
+@bot.callback_query_handler(func=lambda call: True)
+def callback_worker(call):
+    if call.data == "s1":
+        keyboard = buttons_creator({"Согласен": "s2",
+                                    "Нет": "s3"})
+        bot.send_message(call.message.chat.id, "Добрый день, предлагаю вам указать свои данные",
+                         reply_markup=keyboard)
+    else:
+        print(f'\033[31m!ошибка!\nстрока: 51\033[30m\ncall.data: {call.data}')
 
 
 while True:
