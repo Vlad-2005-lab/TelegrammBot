@@ -1,10 +1,10 @@
 import telebot
 from telebot import types
+from data.banned import Ban
 from data.people import People
 from data.boss import Boss
 from data import db_session
 import time
-import numpy as np
 import datetime
 import re
 
@@ -99,6 +99,13 @@ def buttons_creator(dict_of_names, how_many_rows=7):
     return returned_k
 
 
+def update(message):
+    session = db_session.create_session()
+    user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+    user.time = tconv(message.date)
+    session.commit()
+
+
 def machinazii_s_poiskom():
     # adekvatnaja hren, no ne sejchas
     return [f"tupoj_dodik{i}" for i in range(1, 54)]
@@ -154,6 +161,28 @@ def machinazii_s_poiskom():
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
     try:
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
         log(message=message, where="get_text_messages")
         # answer = loginned(message)
         # try:
@@ -348,7 +377,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
             key_dict["1"]["5"] = "5"
             key_dict["1"][">"] = "next"
             bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
-            # return bot.register_next_step_handler(message, porasnij_poisk_rabochih, list_poiska)
+            return bot.register_next_step_handler(message, porasnij_poisk_rabochih, list_poiska)
     except Exception as er:
         log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
 
@@ -356,7 +385,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
 def porasnij_poisk_rabochih(message, s):
     try:
         log(message=message, where="porasnij_poisk_rabochih")
-        bot.send_message(message.from_user.id, f"{args}")
+        bot.send_message(message.from_user.id, f"{s}")
         return bot.register_next_step_handler(message, vilka)
     except Exception as er:
         log(message=message, full=True, where="porasnij_poisk_rabochih", comments=str(er))
@@ -474,8 +503,9 @@ while True:
     try:
         print('\033[0mStarted.....')
         log()
-        exec('bot.polling(none_stop=True, interval=0)')
-    except Exception:
+        bot.polling(none_stop=True)
+    except Exception as err:
         print('\033[31mCrashed.....')
+        print(f"Error: {err}")
         time.sleep(10)
         print('\033[35mRestarting.....')
