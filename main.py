@@ -15,6 +15,7 @@ history = True
 print('\033[35mConnecting to db....')
 db_session.global_init("db/data.sqlite")
 print('\033[35mDb was conected...')
+tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))
 
 
 def log(message=None, where='ne napisal', full=False, comments="None"):
@@ -26,6 +27,7 @@ def log(message=None, where='ne napisal', full=False, comments="None"):
     elif full:
         try:
             print(f"""\033[33m{"-" * 100}
+time: \033[36m{tconv(message.date)}\033[33m
 log №{count}
 from: {where}
 full: {full}
@@ -41,10 +43,11 @@ comments: \033[31m{comments}\033[33m""")
 where: {where}
 full: {full}\033
 comments: {comments}
-error: {er}[30m""")
+error: {er}[0m""")
     else:
         try:
             print(f"""\033[33m{"-" * 100}
+time: \033[36m{tconv(message.date)}\033[33m
 log №{count}
 from: {where}
 full: {full}
@@ -53,13 +56,14 @@ username: \033[36m{message.from_user.username}\033[33m
 first_name(имя): \033[36m{message.from_user.first_name}\033[33m
 last_name(фамилия): \033[36m{message.from_user.last_name}\033[33m
 text: \033[35m{message.text}\033[33m
-comment: {comments}\033[30m""")
+comment: {comments}\033[0m""")
         except Exception as er:
             print(f"""\033[31m!ошибка! Лог №{count}\n message: {message}
+time: \033[36m{datetime.datetime.now()}\033[33m
 where: {where}
 full: {full}
 comments: {comments}
-error: {er}\033[30m""")
+error: {er}\033[0m""")
 
 
 def keyboard_creator(list_of_names):
@@ -93,6 +97,11 @@ def buttons_creator(dict_of_names, how_many_rows=7):
             exec(f"""button = types.InlineKeyboardButton(text='{i}', callback_data='{dict_of_names[i]}')""")
             exec(f"""returned_k.add(button)""")
     return returned_k
+
+
+def machinazii_s_poiskom():
+    # adekvatnaja hren, no ne sejchas
+    return [f"tupoj_dodik{i}" for i in range(1, 54)]
 
 
 #
@@ -318,8 +327,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
                                                       args[1])
             bot.send_message(message.from_user.id, f"Начинаем поиск(нет)",
                              reply_markup=telebot.types.ReplyKeyboardRemove())
-            # mahinacii s poiskom
-            list_poiska = ["dodik1" for _ in range(52)]
+            list_poiska = machinazii_s_poiskom()
             key_dict = {"1": {"<": "back"}}
             args = list(args)
             args.append(sum(govnolist) / len(govnolist))
@@ -333,28 +341,23 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
                    f"3. {list_poiska[2]}\n" + \
                    f"4. {list_poiska[3]}\n" + \
                    f"5. {list_poiska[4]}"
-            if len(list_poiska) > 25:
-                key_dict["1"]["1"] = "1"
-                key_dict["1"]["2"] = "2"
-                key_dict["1"]["3"] = "3"
-                key_dict["1"]["4"] = "4"
-                key_dict["1"]["5"] = "5"
-            else:
-                for i in range(len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1):
-                    key_dict["1"][f"{i + 1}"] = f"{i + 1}"
-            key_dict["1"][">"] = ">"
+            key_dict["1"]["1"] = "1"
+            key_dict["1"]["2"] = "2"
+            key_dict["1"]["3"] = "3"
+            key_dict["1"]["4"] = "4"
+            key_dict["1"]["5"] = "5"
+            key_dict["1"][">"] = "next"
             bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
-            return bot.register_next_step_handler(message, porasnij_poisk_rabochih, args[0], args[1],
-                                                  args[2])
+            # return bot.register_next_step_handler(message, porasnij_poisk_rabochih, list_poiska)
     except Exception as er:
         log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
 
 
-def porasnij_poisk_rabochih(message, *args):
+def porasnij_poisk_rabochih(message, s):
     try:
         log(message=message, where="porasnij_poisk_rabochih")
         bot.send_message(message.from_user.id, f"{args}")
-        return bot.register_next_step_handler(message, porasnij_poisk_rabochih, args[0], args[1], args[2])
+        return bot.register_next_step_handler(message, vilka)
     except Exception as er:
         log(message=message, full=True, where="porasnij_poisk_rabochih", comments=str(er))
 
@@ -379,18 +382,97 @@ def main_menu(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_worker(call):
-    if call.data == "s1":
-        keyboard = buttons_creator({"Согласен": "s2",
-                                    "Нет": "s3"})
-        bot.send_message(call.message.chat.id, "Добрый день, предлагаю вам указать свои данные",
-                         reply_markup=keyboard)
+    if call.data == "back":
+        text = call.message.text.split("\n")
+        now_page = int(text[6].split()[1])
+        if now_page - 1 >= 1:
+            text[6] = f"Страница {now_page - 1} из {int(text[6].split()[3])}"
+            key_dict = {"1": {"<": "back"}}
+            key_dict["1"]["1"] = "1"
+            key_dict["1"]["2"] = "2"
+            key_dict["1"]["3"] = "3"
+            key_dict["1"]["4"] = "4"
+            key_dict["1"]["5"] = "5"
+            key_dict["1"][">"] = "next"
+            list_poiska = machinazii_s_poiskom()
+            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
+                text.append("")
+            for i in range(0, 5):
+                text[8 + i] = f"{1 + i}. {list_poiska[5 * (now_page - 2) + i]}"
+            text = "\n".join(text)
+        else:
+            text[6] = f"Страница {int(text[6].split()[3])} из {int(text[6].split()[3])}"
+            list_poiska = machinazii_s_poiskom()
+            key_dict = {"1": {"<": "back"}}
+            now_page = int(text[6].split()[3]) - 1
+            for i in range((len(list_poiska) - 1) % 5 + 1):
+                key_dict["1"][f"{1 + i}"] = f"{1 + i}"
+            key_dict["1"][">"] = "next"
+            for i in range((len(list_poiska) - 1) % 5 + 1):
+                text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
+            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
+                text.pop()
+            text = "\n".join(text)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons_creator(key_dict))
+    elif call.data == "next":
+        text = call.message.text.split("\n")
+        now_page = int(text[6].split()[1])
+        if now_page + 1 <= int(text[6].split()[3]):
+            if now_page + 1 != int(text[6].split()[3]):
+                text[6] = f"Страница {now_page + 1} из {int(text[6].split()[3])}"
+                key_dict = {"1": {"<": "back"}}
+                key_dict["1"]["1"] = "1"
+                key_dict["1"]["2"] = "2"
+                key_dict["1"]["3"] = "3"
+                key_dict["1"]["4"] = "4"
+                key_dict["1"]["5"] = "5"
+                key_dict["1"][">"] = "next"
+                list_poiska = machinazii_s_poiskom()
+                for i in range(0, 5):
+                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
+                text = "\n".join(text)
+            else:
+                text[6] = f"Страница {now_page + 1} из {int(text[6].split()[3])}"
+                list_poiska = machinazii_s_poiskom()
+                key_dict = {"1": {"<": "back"}}
+                for i in range((len(list_poiska) - 1) % 5 + 1):
+                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
+                    key_dict["1"][f"{1 + i}"] = f"{1 + i}"
+                key_dict["1"][">"] = "next"
+                for i in range((len(list_poiska) - 1) % 5 + 1):
+                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
+                for i in range((len(list_poiska) - 1) % 5 + 1, 5):
+                    text.pop()
+                text = "\n".join(text)
+        else:
+            text[6] = f"Страница 1 из {int(text[6].split()[3])}"
+            key_dict = {"1": {"<": "back"}}
+            key_dict["1"]["1"] = "1"
+            key_dict["1"]["2"] = "2"
+            key_dict["1"]["3"] = "3"
+            key_dict["1"]["4"] = "4"
+            key_dict["1"]["5"] = "5"
+            key_dict["1"][">"] = "next"
+            list_poiska = machinazii_s_poiskom()
+            text[8] = f"1. {list_poiska[0]}"
+            text[9] = f"2. {list_poiska[1]}"
+            text[10] = f"3. {list_poiska[2]}"
+            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
+                text.append("")
+            text[11] = f"4. {list_poiska[3]}"
+            text[12] = f"5. {list_poiska[4]}"
+            text = "\n".join(text)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons_creator(key_dict))
     else:
-        print(f'\033[31m!ошибка!\nстрока: 51\033[30m\ncall.data: {call.data}')
+        bot.send_message(call.message.chat.id, "ухади")
+        # print(f"\033[0m{call.message.text}")
 
 
 while True:
     try:
-        print('\033[30mStarted.....')
+        print('\033[0mStarted.....')
         log()
         exec('bot.polling(none_stop=True, interval=0)')
     except Exception:
