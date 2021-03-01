@@ -1,3 +1,5 @@
+import random
+
 import telebot
 from telebot import types
 from data.banned import Ban
@@ -106,9 +108,19 @@ def update(message):
     session.commit()
 
 
+class Chelik:
+    def __init__(self, name, **args):
+        self.name = name
+        for i in args.keys():
+            exec(f"self.{i} = {args[i]}")
+
+
 def machinazii_s_poiskom():
     # adekvatnaja hren, no ne sejchas
-    return [f"tupoj_dodik{i}" for i in range(1, 54)]
+    list_of_dodik = []
+    for i in range(1, 54):
+        list_of_dodik.append(Chelik(f"tupoj_dodik{i}", age=random.randint(18, 40)))
+    return list_of_dodik
 
 
 #
@@ -236,9 +248,31 @@ def get_text_messages(message):
 def vilka(message):
     try:
         log(message=message, where="vilka")
-        keyboard = keyboard_creator(["Вернуться к выбору"])
+        keyboard = keyboard_creator(["<- Вернуться в меню"])
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
         if message.text == "Поиск работника":
-            bot.send_message(message.from_user.id, f"Какая у вас вакансия?", reply_markup=keyboard)
+            bot.send_message(message.from_user.id, f"Какая у вас вакансия? Введите название должности, основной стек через пробелы", reply_markup=keyboard)
             return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_1)
         elif message.text == "Поиск работы":
             bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
@@ -267,9 +301,31 @@ def vilka(message):
 def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
     try:
         log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_1")
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
         keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                      "Расписание обучения"])
-        if message.text == "Вернуться к выбору":
+        if message.text == "<- Вернуться в меню":
             keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                          "Расписание обучения"])
             bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
@@ -282,13 +338,8 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
             # nekotorie mohinacii c vvodom
             keyboard = keyboard_creator(
                 ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
-                 "Вернуться к выбору"])
-            bot.send_message(message.from_user.id, f"Что вы предлагаете, выберите что-то из списка снизу:" +
-                             f"\nСтажировка" +
-                             f"\nПроектная работа" +
-                             f"\nЧастичная занятость" +
-                             f"\nПолная занятость" +
-                             f"\nВсе варианты", reply_markup=keyboard)
+                 "<- Вернуться в меню"])
+            bot.send_message(message.from_user.id, f"Что вы предлагаете?", reply_markup=keyboard)
             return bot.register_next_step_handler(message,
                                                   porashnaja_funkcia_dla_poiska_rabotnikov_2, list_of_jobs)
     except Exception as er:
@@ -300,8 +351,30 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_2(message, *args):
         log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_2")
         keyboard = keyboard_creator(
             ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
-             "Вернуться к выбору"])
-        if message.text == "Вернуться к выбору":
+             "<- Вернуться в меню"])
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
+        if message.text == "<- Вернуться в меню":
             keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                          "Расписание обучения"])
             bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
@@ -321,14 +394,8 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_2(message, *args):
                     choose[i] = 1
             else:
                 bot.send_message(message.from_user.id, f"Извините, но такого варианта нет.")
-                bot.send_message(message.from_user.id, f"Выбирите что-то из этого:" +
-                                 f"\nСтажировка" +
-                                 f"\nПроектная работа" +
-                                 f"\nЧастичная занятость" +
-                                 f"\nПолная занятость" +
-                                 f"\nВсе варианты")
                 return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_2, args[0])
-            keyboard = keyboard_creator(["Вернуться к выбору"])
+            keyboard = keyboard_creator(["<- Вернуться в меню"])
             bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:", reply_markup=keyboard)
             return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3, args[0], choose)
     except Exception as er:
@@ -340,7 +407,29 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
         log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_3")
         keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                      "Расписание обучения"])
-        if message.text == "Вернуться к выбору":
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
+        if message.text == "<- Вернуться в меню":
             keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                          "Расписание обучения"])
             bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
@@ -350,7 +439,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
             govnolist = [str(i).replace("k", "000") for i in govnolist]
             govnolist = list(map(int, govnolist))
             if govnolist == []:
-                keyboard = keyboard_creator(["Вернуться к выбору"])
+                keyboard = keyboard_creator(["<- Вернуться в меню"])
                 bot.send_message(message.from_user.id, f"Вы не ввели ЗП, попробуйте ещё раз.", reply_markup=keyboard)
                 return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3, args[0],
                                                       args[1])
@@ -364,12 +453,12 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
                    f"Вакансия(и): {args[0]}\n" + \
                    f"Занятость: {'Стажировка' if args[1] == [1, 0, 0, 0] else ('Проектная работа' if args[1] == [0, 1, 0, 0] else ('Частичная занятость' if args[1] == [0, 0, 1, 0] else ('Полная занятость' if args[1] == [0, 0, 0, 1] else 'Все варианты')))}\n" + \
                    f"Зарплата(примерно): {args[2]}\n\n" + \
-                   f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n" + \
-                   f"1. {list_poiska[0]}\n" + \
-                   f"2. {list_poiska[1]}\n" + \
-                   f"3. {list_poiska[2]}\n" + \
-                   f"4. {list_poiska[3]}\n" + \
-                   f"5. {list_poiska[4]}"
+                   f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
+            _list = []
+            for i in range(5):
+                string = f"{1 + i}. {list_poiska[i].name}\n    age: {list_poiska[i].age}"
+                _list.append(string)
+            text += "\n".join(_list)
             key_dict["1"]["1"] = "1"
             key_dict["1"]["2"] = "2"
             key_dict["1"]["3"] = "3"
@@ -378,6 +467,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
             key_dict["1"][">"] = "next"
             bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
             return bot.register_next_step_handler(message, porasnij_poisk_rabochih, list_poiska)
+            # return bot.register_next_step_handler(message, vilka, list_poiska)
     except Exception as er:
         log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
 
@@ -385,14 +475,58 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message, *args):
 def porasnij_poisk_rabochih(message, s):
     try:
         log(message=message, where="porasnij_poisk_rabochih")
-        bot.send_message(message.from_user.id, f"{s}")
+        session = db_session.create_session()
+        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                                     "Расписание обучения"])
+        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+        try:
+            if user.ban and user.count == 0:
+                video = open("data/media/БАН.mp4", "rb")
+                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                                 reply_markup=types.ReplyKeyboardRemove())
+                bot.send_video(message.from_user.id, video)
+                user.count += 1
+                session.commit()
+                return bot.register_next_step_handler(message, get_text_messages)
+            elif user.count != 0:
+                return bot.register_next_step_handler(message, get_text_messages)
+        except Exception:
+            user = Ban()
+            user.tg_id = message.from_user.id
+            user.ban = False
+            user.count = 0
+            user.time = tconv(message.date)
+            session.add(user)
+            session.commit()
+        update(message)
+        bot.send_message(message.from_user.id, f"ss", reply_markup=keyboard)
         return bot.register_next_step_handler(message, vilka)
     except Exception as er:
         log(message=message, full=True, where="porasnij_poisk_rabochih", comments=str(er))
 
 
 def main_menu(message):
-    pass
+    session = db_session.create_session()
+    user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+    try:
+        if user.ban and user.count == 0:
+            video = open("data/media/БАН.mp4", "rb")
+            bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                             reply_markup=types.ReplyKeyboardRemove())
+            bot.send_video(message.from_user.id, video)
+            user.count += 1
+            session.commit()
+            return bot.register_next_step_handler(message, get_text_messages)
+        elif user.count != 0:
+            return bot.register_next_step_handler(message, get_text_messages)
+    except Exception:
+        user = Ban()
+        user.tg_id = message.from_user.id
+        user.ban = False
+        user.count = 0
+        user.time = tconv(message.date)
+        session.add(user)
+        session.commit()
     # log(message=message, where='main_menu')
     # answer = loginned(message)
     # try:
@@ -424,10 +558,9 @@ def callback_worker(call):
             key_dict["1"]["5"] = "5"
             key_dict["1"][">"] = "next"
             list_poiska = machinazii_s_poiskom()
-            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
-                text.append("")
-            for i in range(0, 5):
-                text[8 + i] = f"{1 + i}. {list_poiska[5 * (now_page - 2) + i]}"
+            text = text[: 8]
+            for i in range(5):
+                text.append(f"{1 + i}. {list_poiska[5 * (now_page - 2) + i].name}\n    age: {list_poiska[5 * (now_page - 2) + i].age}")
             text = "\n".join(text)
         else:
             text[6] = f"Страница {int(text[6].split()[3])} из {int(text[6].split()[3])}"
@@ -437,10 +570,9 @@ def callback_worker(call):
             for i in range((len(list_poiska) - 1) % 5 + 1):
                 key_dict["1"][f"{1 + i}"] = f"{1 + i}"
             key_dict["1"][">"] = "next"
+            text = text[: 8]
             for i in range((len(list_poiska) - 1) % 5 + 1):
-                text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
-            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
-                text.pop()
+                text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
@@ -458,21 +590,20 @@ def callback_worker(call):
                 key_dict["1"]["5"] = "5"
                 key_dict["1"][">"] = "next"
                 list_poiska = machinazii_s_poiskom()
-                for i in range(0, 5):
-                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
+                text = text[: 8]
+                for i in range(5):
+                    text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
                 text = "\n".join(text)
             else:
                 text[6] = f"Страница {now_page + 1} из {int(text[6].split()[3])}"
                 list_poiska = machinazii_s_poiskom()
                 key_dict = {"1": {"<": "back"}}
                 for i in range((len(list_poiska) - 1) % 5 + 1):
-                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
                     key_dict["1"][f"{1 + i}"] = f"{1 + i}"
                 key_dict["1"][">"] = "next"
+                text = text[: 8]
                 for i in range((len(list_poiska) - 1) % 5 + 1):
-                    text[8 + i] = f"{1 + i}. {list_poiska[5 * now_page + i]}"
-                for i in range((len(list_poiska) - 1) % 5 + 1, 5):
-                    text.pop()
+                    text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n   age: {list_poiska[5 * now_page + i].age}")
                 text = "\n".join(text)
         else:
             text[6] = f"Страница 1 из {int(text[6].split()[3])}"
@@ -484,13 +615,9 @@ def callback_worker(call):
             key_dict["1"]["5"] = "5"
             key_dict["1"][">"] = "next"
             list_poiska = machinazii_s_poiskom()
-            text[8] = f"1. {list_poiska[0]}"
-            text[9] = f"2. {list_poiska[1]}"
-            text[10] = f"3. {list_poiska[2]}"
-            for i in range((len(list_poiska) - 1) % 5 + 1, 5):
-                text.append("")
-            text[11] = f"4. {list_poiska[3]}"
-            text[12] = f"5. {list_poiska[4]}"
+            text = text[: 8]
+            for i in range(5):
+                text.append(f"{1 + i}. {list_poiska[i].name}\n    age: {list_poiska[i].age}")
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
