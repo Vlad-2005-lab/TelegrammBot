@@ -122,7 +122,6 @@ class Chelik:
 def machinazii_s_poiskom(*args):
     # adekvatnaja hren, no ne sejchas
     list_of_dodik = []
-    print(args)
     for i in range(1, 54):
         list_of_dodik.append(Chelik(f"tupoj_dodik{i}", age=random.randint(18, 40)))
     return list_of_dodik
