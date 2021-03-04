@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-import random
 
+import random
 import telebot
 from telebot import types
 from data.banned import Ban
