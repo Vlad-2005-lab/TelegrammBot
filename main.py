@@ -1,10 +1,10 @@
-import random
+# -*- coding: utf-8 -*-import random
 
 import telebot
 from telebot import types
 from data.banned import Ban
-from data.people import People
-from data.boss import Boss
+# from data.people import People
+# from data.boss import Boss
 from data import db_session
 import time
 import datetime
@@ -15,9 +15,12 @@ print('\033[35mStarting.....')
 count = -1
 history = True
 print('\033[35mConnecting to db....')
-db_session.global_init("db/data.sqlite")
+db_session.global_init("db/resume.sqlite")
 print('\033[35mDb was conected...')
-tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))
+
+
+def tconv(x):
+    return time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))
 
 
 def log(message=None, where='ne napisal', full=False, comments="None"):
@@ -115,9 +118,10 @@ class Chelik:
             exec(f"self.{i} = {args[i]}")
 
 
-def machinazii_s_poiskom():
+def machinazii_s_poiskom(*args):
     # adekvatnaja hren, no ne sejchas
     list_of_dodik = []
+    print(args)
     for i in range(1, 54):
         list_of_dodik.append(Chelik(f"tupoj_dodik{i}", age=random.randint(18, 40)))
     return list_of_dodik
@@ -191,7 +195,6 @@ def get_text_messages(message):
             user.tg_id = message.from_user.id
             user.ban = False
             user.count = 0
-            user.time = tconv(message.date)
             session.add(user)
             session.commit()
         update(message)
@@ -272,7 +275,9 @@ def vilka(message):
             session.commit()
         update(message)
         if message.text == "Поиск работника":
-            bot.send_message(message.from_user.id, f"Какая у вас вакансия? Введите название должности, основной стек через пробелы", reply_markup=keyboard)
+            bot.send_message(message.from_user.id,
+                             f"Какая у вас вакансия? Введите название должности, основной стек через пробелы",
+                             reply_markup=keyboard)
             return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_1)
         elif message.text == "Поиск работы":
             bot.send_message(message.from_user.id, f"Эта функция в разработке, выбирете что-то другое.")
@@ -560,7 +565,8 @@ def callback_worker(call):
             list_poiska = machinazii_s_poiskom()
             text = text[: 8]
             for i in range(5):
-                text.append(f"{1 + i}. {list_poiska[5 * (now_page - 2) + i].name}\n    age: {list_poiska[5 * (now_page - 2) + i].age}")
+                text.append(
+                    f"{1 + i}. {list_poiska[5 * (now_page - 2) + i].name}\n    age: {list_poiska[5 * (now_page - 2) + i].age}")
             text = "\n".join(text)
         else:
             text[6] = f"Страница {int(text[6].split()[3])} из {int(text[6].split()[3])}"
@@ -572,7 +578,8 @@ def callback_worker(call):
             key_dict["1"][">"] = "next"
             text = text[: 8]
             for i in range((len(list_poiska) - 1) % 5 + 1):
-                text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
+                text.append(
+                    f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
@@ -592,7 +599,8 @@ def callback_worker(call):
                 list_poiska = machinazii_s_poiskom()
                 text = text[: 8]
                 for i in range(5):
-                    text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
+                    text.append(
+                        f"{1 + i}. {list_poiska[5 * now_page + i].name}\n    age: {list_poiska[5 * now_page + i].age}")
                 text = "\n".join(text)
             else:
                 text[6] = f"Страница {now_page + 1} из {int(text[6].split()[3])}"
@@ -603,7 +611,8 @@ def callback_worker(call):
                 key_dict["1"][">"] = "next"
                 text = text[: 8]
                 for i in range((len(list_poiska) - 1) % 5 + 1):
-                    text.append(f"{1 + i}. {list_poiska[5 * now_page + i].name}\n   age: {list_poiska[5 * now_page + i].age}")
+                    text.append(
+                        f"{1 + i}. {list_poiska[5 * now_page + i].name}\n   age: {list_poiska[5 * now_page + i].age}")
                 text = "\n".join(text)
         else:
             text[6] = f"Страница 1 из {int(text[6].split()[3])}"
@@ -626,11 +635,12 @@ def callback_worker(call):
         # print(f"\033[0m{call.message.text}")
 
 
-while True:
+for _ in range(10):
     try:
         print('\033[0mStarted.....')
         log()
-        bot.polling(none_stop=True)
+        # bot.polling(none_stop=True)
+        bot.infinity_polling()
     except Exception as err:
         print('\033[31mCrashed.....')
         print(f"Error: {err}")
