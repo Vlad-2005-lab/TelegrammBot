@@ -16,7 +16,7 @@ class People(SqlAlchemyBase, UserMixin):
     salary = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
     schedule = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     employment = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    experience = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    experience = sqlalchemy.Column(sqlalchemy.String, nullable=True, default="нет")
     achievements = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     about_me = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     job = sqlalchemy.Column(sqlalchemy.String, nullable=True)
