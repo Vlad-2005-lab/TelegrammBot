@@ -13,7 +13,7 @@ import datetime
 import re
 
 SMILE = ['↩']
-bot = telebot.TeleBot('1625541968:AAF0Hrv_57dx8x1osP56CxnxSejWu-kWijc')
+bot = telebot.TeleBot('1625541968:AAGKeKOaiTMbgraWwy4ZG8AZ3Ckj_30FKV8')
 print('\033[35mStarting.....')
 count = -1
 history = True
