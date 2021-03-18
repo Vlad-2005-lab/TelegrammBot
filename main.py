@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-import random
+# -*- coding: utf-8 -*-
 
-import random
+# import random
 import telebot
+import pdfcrowd
 from emoji import emojize
 from telebot import types
 from data.banned import Ban
@@ -13,6 +14,48 @@ import datetime
 import re
 
 SMILE = ['↩']
+SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon", "python"},
+            'frontend': {'фронтэнд', "фронт-энд", "фронтенд", "фронт-енд", "front", "front-end", "frontend"},
+            'backend': {'бэктэнд', "бэк-энд", "бектенд", "бекенд-енд", "back", "back-end", "backend"},
+            'java': {'ява', "жава", "джава", 'java'},
+            "javascript": {'javascript', "js", "java-script"},
+            "web": {"web", 'веб', "вэб"}
+            }
+jobs = {"разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'actionscript', 'ada', 'agilent vee', 'algol',
+        'alice',
+        'angelscript', 'apex', 'apl', 'applescript', 'arc', 'arduino', 'asp', 'aspectj', 'assembly',
+        'atlas', 'augeas', 'autohotkey', 'autoit', 'autolisp', 'automator', 'avenue', 'awk', 'bash',
+        '(visual) basic', 'bc', 'bcpl', 'beta', 'blitzmax', 'boo', 'bourne shell', 'bro', 'c', 'c shell',
+        'c#', 'c++', 'c++/cli', 'c-omega', 'caml', 'ceylon', 'cfml', 'cg', 'ch', 'chill', 'cil',
+        'cl (os/400)', 'clarion', 'clean', 'clipper', 'clojure', 'clu', 'cobol', 'cobra', 'coffeescript',
+        'coldfusion', 'comal', 'common lisp', 'coq', 'ct', 'curl', 'd', 'dart', 'dcl', 'dcpu-16 asm',
+        'delphi/object pascal', 'dibol', 'dylan', 'e', 'ec', 'ecl', 'ecmascript', 'egl', 'eiffel', 'elixir',
+        'emacs lisp', 'erlang', 'etoys', 'euphoria', 'exec', 'f#', 'factor', 'falcon', 'fancy', 'fantom',
+        'felix', 'forth', 'fortran', 'fortress', '(visual) foxpro', 'gambas', 'gnu octave', 'go',
+        'google appsscript', 'gosu', 'groovy', 'haskell', 'haxe', 'heron', 'hpl', 'hypertalk', 'icon',
+        'idl', 'inform', 'informix-4gl', 'intercal', 'io', 'ioke', 'j', 'j#', 'jade', 'java',
+        'java fx script', 'javascript', 'jscript', 'jscript.net', 'julia', 'korn shell', 'kotlin',
+        'labview', 'ladder logic', 'lasso', 'limbo', 'lingo', 'lisp', 'logo', 'logtalk', 'lotusscript',
+        'lpc', 'lua', 'lustre', 'm4', 'mad', 'magic', 'magik', 'malbolge', 'mantis', 'maple', 'mathematica',
+        'matlab', 'max/msp', 'maxscript', 'mel', 'mercury', 'mirah', 'miva', 'ml', 'monkey', 'modula-2',
+        'modula-3', 'moo', 'moto', 'ms-dos batch', 'mumps', 'natural', 'nemerle', 'nimrod', 'nqc', 'nsis',
+        'nu', 'nxt-g', 'oberon', 'object rexx', 'objective-c', 'objective-j', 'ocaml', 'occam', 'ooc',
+        'opa', 'opencl', 'openedge abl', 'opl', 'oz', 'paradox', 'parrot', 'pascal', 'perl', 'php', 'pike',
+        'pilot', 'pl/i', 'pl/sql', 'pliant', 'postscript', 'pov-ray', 'powerbasic', 'powerscript',
+        'powershell', 'processing', 'prolog', 'puppet', 'pure data', 'python', 'q', 'r', 'racket',
+        'realbasic', 'rebol', 'revolution', 'rexx', 'rpg (os/400)', 'ruby', 'rust', 's', 's-plus', 'sas',
+        'sather', 'scala', 'scheme', 'scilab', 'scratch', 'sed', 'seed7', 'self', 'shell', 'signal',
+        'simula', 'simulink', 'slate', 'smalltalk', 'smarty', 'spark', 'spss', 'sqr', 'squeak', 'squirrel',
+        'standard ml', 'suneido', 'supercollider', 'tacl', 'tcl', 'tex', 'thinbasic', 'tom', 'transact-sql',
+        'turing', 'typescript', 'vala/genie', 'vbscript', 'verilog', 'vhdl', 'viml', 'visual basic .net',
+        'webdna', 'whitespace', 'x10', 'xbase', 'xbase++', 'xen', 'xpl', 'xslt', 'xquery', 'yacc', 'yorick',
+        'z shell', 'css', 'html', 'js', 'верстка', 'crm', 'gulp', 'sass', 'vue', '1c', '1с', 'sql', 'ооп',
+        'web', 'wordpress', 'seo', 'git', 'react', 'тестировщик', 'backend', 'специалист баз данных', 'mvc',
+        'фронтэнд', 'developer', 'frontend', 'junior', 'middle', 'senior', 'django', 'flask', 'swift',
+        'desktop', 'diy', 'pet', 'геймдев', 'gamedev', '.net', 'front-end', 'wpf', 'excel', 'cisco', 'aws',
+        'server', 'xml', 'android', 'json', 'андроит', 'jquery', 'bootstrap', 'bitrix', 'laravel',
+        'symfony', 'codeigniter', 'yii', 'phalcon', 'cakephp', 'zend', 'slim', 'fuelphp', 'phpixie',
+        'joomla', 'bitrix', 'drupal', 'wordpress', 'opencart', 'питон'}
 bot = telebot.TeleBot('1625541968:AAGKeKOaiTMbgraWwy4ZG8AZ3Ckj_30FKV8')
 print('\033[35mStarting.....')
 count = -1
@@ -75,7 +118,7 @@ error: {er}\033[0m""")
 
 
 def keyboard_creator(list_of_names):
-    returned_k = telebot.types.ReplyKeyboardMarkup()
+    returned_k = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     for i in list_of_names:
         if isinstance(i, list):
             string = ""
@@ -123,6 +166,20 @@ class Chelik:
                 exec(f"self.{i} = {args[i]}")
 
 
+def clean_lower(line):
+    global jobs
+    line = str(line).lower()
+    line = re.sub(r"[\\\/\.\,\?\!@\"\'#№%^&\*\+\-;–:—\(\)\[\]\{\}\-_<>«»]", " ", line).split()
+    new_line = []
+    line = set(line)
+    for key, value in SINONIMS.items():
+        if len(line.intersection(value)) > 0:
+            new_line.append(key)
+            print(key)
+    new_line.extend(list(line.intersection(jobs)))
+    return list(set(new_line))
+
+
 def machinazii_s_poiskom(tg_id=-1):
     try:
         if tg_id == -1:
@@ -133,8 +190,70 @@ def machinazii_s_poiskom(tg_id=-1):
             for i in users:
                 list_of_dodik.append(Chelik(id=i.id, job=i.job, salary=i.salary))
             return list_of_dodik
+        else:
+            session = db_session.create_session()
+            print(tg_id)
+            user = session.query(Ban).filter(Ban.tg_id == tg_id).first()
+            request_of_jobs = set(user.arg1.lower())
     except Exception as ex:
         log(full=True, where="machinazii_s_poiskom", comments=str(ex))
+
+
+def pdf(user_id):
+    db_session.global_init("db/resume.sqlite")
+    file = open('data/media/pdf.html', mode="w", encoding="utf-8")
+    session = db_session.create_session()
+    user = session.query(People).filter(People.id == user_id).first()
+    text = f"""<!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+    </head>
+    <body>
+    <img src="icon.png" style="float:left; height: 150px;">
+    <div style="margin-left: 900px; padding-top: 1px; width: 500px;">
+        <h2 style="font-family: Arial;">Школа программирования Тюменской области</h2>
+        <h3></h3>
+        <h3><a href="https://tmn-it.ru/shkola-programmirovaniya/code@tmn-it.ru">https://tmn-it.ru/shkola-programmirovaniya/
+            code@tmn-it.ru</a>
+        </h3>
+    </div>
+    <h1 style="font-size: 40px; margin-top: 120px;" align="center">Резюме</h1>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">ФИО</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.name}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Желаемая работа</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.job}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Дата рождения</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.birth_date}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Номер телефона</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.phone}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Адрес электронной почты</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.mail}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Местожительство</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.city}</p>
+    <p style="margin-top: 100px; display: inline-block; width: 1300px;"></p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Форма занятости</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.schedule}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Ожидаемая заработная плата</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.salary}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Опыт работы</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.experience}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Профессиональные достижения</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.achievements}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">Образование</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.education}</p>
+    <h1 style="vertical-align: top; display: inline-block; width: 300px; margin-left: 60px;">О себе</h1>
+    <p style="display: inline-block; width: 900px; margin-left: 40px; font-size: 32px; text-align: justify;">{user.about_me}</p>
+    </body>
+    </html>"""
+    for i in text.split("\n"):
+        file.write(i + "\n")
+    file.close()
+    client = pdfcrowd.HtmlToPdfClient("AVI2005", "5ec73c962bac1db58b3e27d9dd183a86")
+    client.setPageWidth("1400px")
+    client.setPageHeight("2000px")
+    client.convertFileToFile("data/media/pdf.html", 'data/media/resume.pdf')
 
 
 #
@@ -479,9 +598,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message):
                 keyboard = keyboard_creator([f"{emojize(SMILE[0], use_aliases=True)} Вернуться в меню"])
                 bot.send_message(message.from_user.id, f"Вы не ввели ЗП, попробуйте ещё раз.", reply_markup=keyboard)
                 return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3)
-            bot.send_message(message.from_user.id, f"Начинаем поиск(нет)",
-                             reply_markup=buttons_creator(
-                                 {f"{emojize(SMILE[0], use_aliases=True)} Вернуться в меню": "to start menu"}))
+            bot.send_message(message.from_user.id, f"Начинаем поиск(нет)")
             list_poiska = machinazii_s_poiskom()
             key_dict = {"1": {"<": "back"}}
             user.arg3 = sum(govnolist) / len(govnolist)
@@ -582,7 +699,8 @@ def main_menu(message):
     #     return bot.register_next_step_handler(message, main_menu)
 
 
-@bot.callback_query_handler(func=lambda call: call.data in ['1', '2', '3', '4', '5', 'next', 'back', 'to start menu'])
+@bot.callback_query_handler(
+    func=lambda call: str(call.data).isdigit() or call.data in ['next', 'back', 'to start menu'])
 def callback_worker(call):
     if call.data == "back":
         text = call.message.text.split("\n")
@@ -676,6 +794,7 @@ def callback_worker(call):
         text = []
         nomer = (now_page - 1) * 5 + int(call.data)
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        # _list = machinazii_s_poiskom(tg_id=call.message.chat.id)
         _list = machinazii_s_poiskom()
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
         text.append(f"{chelik.job}")
@@ -683,7 +802,8 @@ def callback_worker(call):
         text.append(f"Ожидаемая зарплата: {chelik.salary}")
         text.append(f"Занятость: {chelik.employment}")
         text.append("")
-        text.append(f"Опыт работы: {chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
+        text.append(
+            f"Опыт работы: {chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
         buttons = buttons_creator({"1": {
             f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
             'Контакты': 'cont',
@@ -697,7 +817,7 @@ def callback_worker(call):
         # print(f"\033[0m{call.message.text}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data in ['return', 'cont', 'full', "about"])
+@bot.callback_query_handler(func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about"])
 def callback2(call):
     if call.data == 'return':
         session = db_session.create_session()
@@ -709,19 +829,38 @@ def callback2(call):
         text = [
             f"Страница {nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1} из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}",
             ""]
-        for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
             nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
             string = f"{1 + i}. Профессия: {list_poiska[nomer1 * 5 + i].job}\n     Зарплата:    {list_poiska[nomer1 * 5 + i].salary}"
             text.append(string)
         text = "\n".join(text)
-        key_dict["1"]["1"] = "1"
-        key_dict["1"]["2"] = "2"
-        key_dict["1"]["3"] = "3"
-        key_dict["1"]["4"] = "4"
-        key_dict["1"]["5"] = "5"
+        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
+            key_dict["1"][f"{i + 1}"] = f"{i + 1}"
         key_dict["1"][">"] = "next"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
+    elif call.data == 'return1':
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        list_poiska = machinazii_s_poiskom()
+        key_dict = {"1": {"<": "back"}}
+        nomer = user.count
+        text = [
+            f"Страница {nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1} из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}",
+            ""]
+        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
+            nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
+            string = f"{1 + i}. Профессия: {list_poiska[nomer1 * 5 + i].job}\n     Зарплата:    {list_poiska[nomer1 * 5 + i].salary}"
+            text.append(string)
+        text = "\n".join(text)
+        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
+            key_dict["1"][f"{i + 1}"] = f"{i + 1}"
+        key_dict["1"][">"] = "next"
+        bot.send_message(call.message.chat.id, text, reply_markup=buttons_creator(key_dict))
     elif call.data == "about":
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
@@ -764,11 +903,13 @@ def callback2(call):
                               reply_markup=buttons)
     elif call.data == 'full':
         session = db_session.create_session()
-        text = ["это не робит, пока что"]
-        text = "\n".join(text)
-        buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'about'}})
-        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
-                              reply_markup=buttons)
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        nomer = user.count
+        _list = machinazii_s_poiskom()
+        chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
+        pdf(chelik.id)
+        buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return1'}})
+        bot.send_document(call.message.chat.id, open("data/media/resume.pdf", 'rb'), reply_markup=buttons)
 
 
 for _ in range(10):
