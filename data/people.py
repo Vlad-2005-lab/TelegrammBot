@@ -22,3 +22,4 @@ class People(SqlAlchemyBase, UserMixin):
     job = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     education = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     count = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
+    tags = sqlalchemy.Column(sqlalchemy.String)
