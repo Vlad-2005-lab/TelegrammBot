@@ -12,16 +12,18 @@ from data import db_session
 import time
 import datetime
 import re
+import numpy as np
 
 SMILE = ['↩']
 SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon", "python"},
             'frontend': {'фронтэнд', "фронт-энд", "фронтенд", "фронт-енд", "front", "front-end", "frontend"},
-            'backend': {'бэктэнд', "бэк-энд", "бектенд", "бекенд-енд", "back", "back-end", "backend"},
+            'backend': {'бэкэнд', 'бэкенд', "бэк-энд", "бекенд", "бекенд-енд", "back", "back-end", "backend"},
             'java': {'ява', "жава", "джава", 'java'},
             "javascript": {'javascript', "js", "java-script"},
-            "web": {"web", 'веб', "вэб"}
+            "web": {"web", 'веб', "вэб"},
+            '1c': {'1c', '1с'}
             }
-jobs = {"разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'actionscript', 'ada', 'agilent vee', 'algol',
+jobs = {"программист" ,"разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'actionscript', 'ada', 'agilent vee', 'algol',
         'alice',
         'angelscript', 'apex', 'apl', 'applescript', 'arc', 'arduino', 'asp', 'aspectj', 'assembly',
         'atlas', 'augeas', 'autohotkey', 'autoit', 'autolisp', 'automator', 'avenue', 'awk', 'bash',
@@ -55,13 +57,16 @@ jobs = {"разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'ac
         'desktop', 'diy', 'pet', 'геймдев', 'gamedev', '.net', 'front-end', 'wpf', 'excel', 'cisco', 'aws',
         'server', 'xml', 'android', 'json', 'андроит', 'jquery', 'bootstrap', 'bitrix', 'laravel',
         'symfony', 'codeigniter', 'yii', 'phalcon', 'cakephp', 'zend', 'slim', 'fuelphp', 'phpixie',
-        'joomla', 'bitrix', 'drupal', 'wordpress', 'opencart', 'питон'}
-bot = telebot.TeleBot('1625541968:AAGKeKOaiTMbgraWwy4ZG8AZ3Ckj_30FKV8')
+        'joomla', 'bitrix', 'drupal', 'wordpress', 'opencart', 'питон', 'программист'}
+bot = telebot.TeleBot('1625541968:AAGduE9frFUfu6Nlwxq3cUldZi-ph2W61q0')
 print('\033[35mStarting.....')
 count = -1
 history = True
 print('\033[35mConnecting to db....')
-db_session.global_init("db/resume.sqlite")
+try:
+    db_session.global_init("db/resume.sqlite")
+except Exception:
+    db_session.global_init("/home/AVI2005/TelegrammBot/db/resume.sqlite")
 print('\033[35mDb was conected...')
 
 
@@ -78,7 +83,7 @@ def log(message=None, where='ne napisal', full=False, comments="None"):
     elif full:
         try:
             print(f"""\033[33m{"-" * 100}
-time: \033[36m{tconv(message.date)}\033[33m
+time: \033[36m{0}\033[33m
 log №{count}
 from: {where}
 full: {full}
@@ -175,16 +180,15 @@ def clean_lower(line):
     for key, value in SINONIMS.items():
         if len(line.intersection(value)) > 0:
             new_line.append(key)
-            print(key)
     new_line.extend(list(line.intersection(jobs)))
     return list(set(new_line))
 
 
 def machinazii_s_poiskom(tg_id=-1):
     try:
+        list_of_dodik = []
         if tg_id == -1:
             # adekvatnaja hren, no ne sejchas
-            list_of_dodik = []
             session = db_session.create_session()
             users = session.query(People).all()
             for i in users:
@@ -192,16 +196,78 @@ def machinazii_s_poiskom(tg_id=-1):
             return list_of_dodik
         else:
             session = db_session.create_session()
-            print(tg_id)
-            user = session.query(Ban).filter(Ban.tg_id == tg_id).first()
-            request_of_jobs = set(user.arg1.lower())
+            jobler = session.query(Ban).filter(Ban.tg_id == tg_id).first()
+            request_of_jobs = clean_lower(jobler.arg1.lower())
+            users = session.query(People).all()
+            request_of_jobs = set(request_of_jobs).intersection(jobs)
+            part_1 = []
+            part_2 = []
+            part_3 = []
+            part_4 = []
+            for i in users:
+                if len(request_of_jobs.intersection(set(i.tags.split()))) > 0:
+                    p = (len(request_of_jobs.intersection(set(i.tags.split())))) / (len(request_of_jobs))
+                    s = abs(int(jobler.arg3) - int(i.salary)) / 20000
+                    np1 = np.array([0, 0, 0, 0])
+                    np2 = np.array([0, 0, 0, 0])
+                    for hz in i.employment.split():
+                        if hz == "Стажировка":
+                            np2[0] = 1
+                        elif hz == "Проектная работа":
+                            np2[1] = 1
+                        elif hz == "Частичная занятость":
+                            np2[2] = 1
+                        elif hz == "Полная занятость":
+                            np2[3] = 1
+                        elif hz == "Все варианты":
+                            np2 = np.array([1, 1, 1, 1])
+                    if jobler.arg2 == "Стажировка":
+                        np1[0] = 1
+                    elif jobler.arg2 == "Проектная работа":
+                        np1[1] = 1
+                    elif jobler.arg2 == "Частичная занятость":
+                        np1[2] = 1
+                    elif jobler.arg2 == "Полная занятость":
+                        np1[3] = 1
+                    elif jobler.arg2 == "Все варианты":
+                        np1 = np.array([1, 1, 1, 1])
+                    if any(list(np1 * np2)):
+                        e = 1
+                    else:
+                        e = 0.8
+                    if i.salary <= int(jobler.arg3):
+                        r = p + e + s
+                    else:
+                        r = p + e - s
+                    if p >= 0.75:
+                        part_1.append(Chelik(id=i.id, job=i.job, salary=i.salary, r=r))
+                    elif p >= 0.5:
+                        part_2.append(Chelik(id=i.id, job=i.job, salary=i.salary, r=r))
+                    elif p >= 0.25:
+                        part_3.append(Chelik(id=i.id, job=i.job, salary=i.salary, r=r))
+                    elif p >= 0:
+                        part_4.append(Chelik(id=i.id, job=i.job, salary=i.salary, r=r))
+                    else:
+                        log(message=None, where="махинации с поиском в распределении по группам", full=False,
+                            comments=f"p = {p}")
+            part_1.sort(key=lambda x: -x.r)
+            part_2.sort(key=lambda x: -x.r)
+            part_3.sort(key=lambda x: -x.r)
+            part_4.sort(key=lambda x: -x.r)
+            list_of_dodik.extend(part_1)
+            list_of_dodik.extend(part_2)
+            list_of_dodik.extend(part_3)
+            list_of_dodik.extend(part_4)
+            return list_of_dodik
     except Exception as ex:
         log(full=True, where="machinazii_s_poiskom", comments=str(ex))
 
 
 def pdf(user_id):
-    db_session.global_init("db/resume.sqlite")
-    file = open('data/media/pdf.html', mode="w", encoding="utf-8")
+    try:
+        file = open('data/media/pdf.html', mode="w", encoding="utf-8")
+    except Exception:
+        file = open('/home/AVI2005/TelgrammBot/data/media/pdf.html', mode="w", encoding="utf-8")
     session = db_session.create_session()
     user = session.query(People).filter(People.id == user_id).first()
     text = f"""<!DOCTYPE html>
@@ -320,10 +386,10 @@ def get_text_messages(message):
         user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
         try:
             if user.ban and user.count == 0:
-                video = open("data/media/БАН.mp4", "rb")
+                # video = open("data/media/БАН.mp4", "rb")
                 bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
                                  reply_markup=types.ReplyKeyboardRemove())
-                bot.send_video(message.from_user.id, video)
+                # bot.send_video(message.from_user.id, video)
                 user.count += 1
                 session.commit()
                 return bot.register_next_step_handler(message, get_text_messages)
@@ -410,7 +476,7 @@ def vilka(message):
             user.tg_id = message.from_user.id
             user.ban = False
             user.count = 0
-            user.time = tconv(message.date)
+            # user.time = tconv(message.date)
             session.add(user)
             session.commit()
         update(message)
@@ -464,7 +530,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
             user.tg_id = message.from_user.id
             user.ban = False
             user.count = 0
-            user.time = tconv(message.date)
+            # user.time = tconv(message.date)
             session.add(user)
             session.commit()
             session.close()
@@ -522,7 +588,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_2(message):
             user.tg_id = message.from_user.id
             user.ban = False
             user.count = 0
-            user.time = tconv(message.date)
+            # user.time = tconv(message.date)
             session.add(user)
             session.commit()
             session.close()
@@ -581,7 +647,7 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message):
             user.tg_id = message.from_user.id
             user.ban = False
             user.count = 0
-            user.time = tconv(message.date)
+            # user.time = tconv(message.date)
             session.add(user)
             session.commit()
         update(message)
@@ -594,28 +660,41 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message):
             govnolist = re.findall(r"\b\d+k*\b", str(message.text).replace("к", "k"))
             govnolist = [str(i).replace("k", "000") for i in govnolist]
             govnolist = list(map(int, govnolist))
-            if govnolist == []:
+            if not govnolist:
                 keyboard = keyboard_creator([f"{emojize(SMILE[0], use_aliases=True)} Вернуться в меню"])
                 bot.send_message(message.from_user.id, f"Вы не ввели ЗП, попробуйте ещё раз.", reply_markup=keyboard)
                 return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3)
-            bot.send_message(message.from_user.id, f"Начинаем поиск(нет)")
-            list_poiska = machinazii_s_poiskom()
-            key_dict = {"1": {"<": "back"}}
+            bot.send_message(message.from_user.id, f"Начинаем поиск")
             user.arg3 = sum(govnolist) / len(govnolist)
             session.commit()
-            text = f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
-            _list = []
-            for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
-                string = f"{1 + i}. Профессия: {list_poiska[i].job}\n     Зарплата:    {list_poiska[i].salary}"
-                _list.append(string)
-            text += "\n".join(_list)
-            key_dict["1"]["1"] = "1"
-            key_dict["1"]["2"] = "2"
-            key_dict["1"]["3"] = "3"
-            key_dict["1"]["4"] = "4"
-            key_dict["1"]["5"] = "5"
-            key_dict["1"][">"] = "next"
-            bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
+            list_poiska = machinazii_s_poiskom(message.from_user.id)
+            if len(list_poiska) != 0:
+                key_dict = {'1': {}}
+                if len(list_poiska) > 5:
+                    key_dict["1"]["<"] = "back"
+                text = f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
+                _list = []
+                for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                    string = f"{1 + i}. {list_poiska[i].job}\n{list_poiska[i].salary} р."
+                    _list.append(string)
+                text += "\n".join(_list)
+                for i in range(1, len(_list) + 1):
+                    key_dict["1"][f"{i}"] = f"{i}"
+                # key_dict["1"]["2"] = "2"
+                # key_dict["1"]["3"] = "3"
+                # key_dict["1"]["4"] = "4"
+                # key_dict["1"]["5"] = "5"
+                if len(list_poiska) > 5:
+                    key_dict["1"][">"] = "next"
+                bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
+            else:
+                text = "По вашему запросу ничего не найдено"
+                bot.send_message(message.from_user.id, text)
+                keyboard = keyboard_creator(
+                    [["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
+                     "Расписание обучения"])
+                bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+                return bot.register_next_step_handler(message, vilka, list_poiska)
             return bot.register_next_step_handler(message, porasnij_poisk_rabochih)
             # return bot.register_next_step_handler(message, vilka, list_poiska)
     except Exception as er:
@@ -680,7 +759,7 @@ def main_menu(message):
         user.tg_id = message.from_user.id
         user.ban = False
         user.count = 0
-        user.time = tconv(message.date)
+        # user.time = tconv(message.date)
         session.add(user)
         session.commit()
     # log(message=message, where='main_menu')
@@ -708,77 +787,66 @@ def callback_worker(call):
         if now_page - 1 >= 1:
             text[0] = f"Страница {now_page - 1} из {int(text[0].split()[3])}"
             key_dict = {"1": {"<": "back"}}
-            key_dict["1"]["1"] = "1"
-            key_dict["1"]["2"] = "2"
-            key_dict["1"]["3"] = "3"
-            key_dict["1"]["4"] = "4"
-            key_dict["1"]["5"] = "5"
+            for gg in range(1, 6):
+                key_dict["1"][f"{(now_page - 2) * 5 + gg}"] = f"{(now_page - 2) * 5 + gg}"
             key_dict["1"][">"] = "next"
-            list_poiska = machinazii_s_poiskom()
+            list_poiska = machinazii_s_poiskom(call.message.chat.id)
             text = text[: 2]
             for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
                 text.append(
-                    f"{1 + i}. Профессия: {list_poiska[5 * (now_page - 2) + i].job}\n     Зарплата:    {list_poiska[5 * (now_page - 2) + i].salary}")
+                    f"{1 + i}. {list_poiska[5 * (now_page - 2) + i].job}\n{int(list_poiska[5 * (now_page - 2) + i].salary)} р.")
             text = "\n".join(text)
         else:
             text[0] = f"Страница {int(text[0].split()[3])} из {int(text[0].split()[3])}"
-            list_poiska = machinazii_s_poiskom()
+            list_poiska = machinazii_s_poiskom(call.message.chat.id)
             key_dict = {"1": {"<": "back"}}
             now_page = int(text[0].split()[3]) - 1
             for i in range((len(list_poiska) - 1) % 5 + 1):
-                key_dict["1"][f"{1 + i}"] = f"{1 + i}"
+                key_dict["1"][f"{now_page * 5 + 1 + i}"] = f"{now_page * 5 + 1 + i}"
             key_dict["1"][">"] = "next"
             text = text[: 2]
             for i in range((len(list_poiska) - 1) % 5 + 1):
                 text.append(
-                    f"{1 + i}. Профессия: {list_poiska[5 * now_page + i].job}\n     Зарплата:    {list_poiska[5 * now_page + i].salary}")
+                    f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)} р.")
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
     elif call.data == "next":
         text = call.message.text.split("\n")
+        list_poiska = machinazii_s_poiskom(call.message.chat.id)
         now_page = int(text[0].split()[1])
         if now_page + 1 <= int(text[0].split()[3]):
             if now_page + 1 != int(text[0].split()[3]):
                 text[0] = f"Страница {now_page + 1} из {int(text[0].split()[3])}"
                 key_dict = {"1": {"<": "back"}}
-                key_dict["1"]["1"] = "1"
-                key_dict["1"]["2"] = "2"
-                key_dict["1"]["3"] = "3"
-                key_dict["1"]["4"] = "4"
-                key_dict["1"]["5"] = "5"
+                for gg in range(1, 6):
+                    key_dict["1"][f"{now_page * 5 + gg}"] = f"{now_page * 5 + gg}"
                 key_dict["1"][">"] = "next"
-                list_poiska = machinazii_s_poiskom()
                 text = text[: 2]
                 for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
                     text.append(
-                        f"{1 + i}. Профессия: {list_poiska[5 * now_page + i].job}\n     Зарплата:    {list_poiska[5 * now_page + i].salary}")
+                        f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)}  р.")
                 text = "\n".join(text)
             else:
                 text[0] = f"Страница {now_page + 1} из {int(text[0].split()[3])}"
-                list_poiska = machinazii_s_poiskom()
                 key_dict = {"1": {"<": "back"}}
                 for i in range((len(list_poiska) - 1) % 5 + 1):
-                    key_dict["1"][f"{1 + i}"] = f"{1 + i}"
+                    key_dict["1"][f"{now_page * 5 + i + 1}"] = f"{now_page * 5 + 1 + i}"
                 key_dict["1"][">"] = "next"
                 text = text[: 2]
                 for i in range((len(list_poiska) - 1) % 5 + 1):
                     text.append(
-                        f"{1 + i}. Профессия: {list_poiska[5 * now_page + i].job}\n     Зарплата:    {list_poiska[5 * now_page + i].salary}")
+                        f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)}  р.")
                 text = "\n".join(text)
         else:
             text[0] = f"Страница 1 из {int(text[0].split()[3])}"
             key_dict = {"1": {"<": "back"}}
-            key_dict["1"]["1"] = "1"
-            key_dict["1"]["2"] = "2"
-            key_dict["1"]["3"] = "3"
-            key_dict["1"]["4"] = "4"
-            key_dict["1"]["5"] = "5"
+            for gg in range(1, 6):
+                key_dict["1"][f"{gg}"] = f"{gg}"
             key_dict["1"][">"] = "next"
-            list_poiska = machinazii_s_poiskom()
             text = text[: 2]
             for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
-                text.append(f"{1 + i}. Профессия: {list_poiska[i].job}\n     Зарплата:    {list_poiska[i].salary}")
+                text.append(f"{1 + i}. {list_poiska[i].job}\n{int(list_poiska[i].salary)} р.")
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
@@ -792,25 +860,24 @@ def callback_worker(call):
         text = call.message.text.split("\n")
         now_page = int(text[0].split()[1])
         text = []
-        nomer = (now_page - 1) * 5 + int(call.data)
+        nomer = int(call.data)
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
-        # _list = machinazii_s_poiskom(tg_id=call.message.chat.id)
-        _list = machinazii_s_poiskom()
+        _list = machinazii_s_poiskom(tg_id=call.message.chat.id)
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
         text.append(f"{chelik.job}")
         text.append("")
-        text.append(f"Ожидаемая зарплата: {chelik.salary}")
-        text.append(f"Занятость: {chelik.employment}")
+        text.append(f"{chelik.salary}")
+        text.append(f"{chelik.employment}")
         text.append("")
         text.append(
-            f"Опыт работы: {chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
+            f"{chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
         buttons = buttons_creator({"1": {
             f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
             'Контакты': 'cont',
             'Полное резюме': 'full'
         }})
         text = "\n".join(text)
-        user.count = (now_page - 1) * 5 + int(call.data)
+        user.count = int(call.data)
         session.commit()
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons)
@@ -822,7 +889,7 @@ def callback2(call):
     if call.data == 'return':
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
-        list_poiska = machinazii_s_poiskom()
+        list_poiska = machinazii_s_poiskom(call.message.chat.id)
         key_dict = {"1": {"<": "back"}}
         text = call.message.text.split("\n")
         nomer = user.count
@@ -832,19 +899,20 @@ def callback2(call):
         for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
                 nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
             nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
-            string = f"{1 + i}. Профессия: {list_poiska[nomer1 * 5 + i].job}\n     Зарплата:    {list_poiska[nomer1 * 5 + i].salary}"
+            string = f"{1 + i}. {list_poiska[nomer1 * 5 + i].job}\n{int(list_poiska[nomer1 * 5 + i].salary)} р."
             text.append(string)
         text = "\n".join(text)
         for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
                 nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
-            key_dict["1"][f"{i + 1}"] = f"{i + 1}"
+            hz = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
+            key_dict["1"][f"{hz * 5 + i + 1}"] = f"{hz * 5 + i + 1}"
         key_dict["1"][">"] = "next"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
     elif call.data == 'return1':
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
-        list_poiska = machinazii_s_poiskom()
+        list_poiska = machinazii_s_poiskom(call.message.chat.id)
         key_dict = {"1": {"<": "back"}}
         nomer = user.count
         text = [
@@ -853,12 +921,13 @@ def callback2(call):
         for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
                 nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
             nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
-            string = f"{1 + i}. Профессия: {list_poiska[nomer1 * 5 + i].job}\n     Зарплата:    {list_poiska[nomer1 * 5 + i].salary}"
+            string = f"{1 + i}. {list_poiska[nomer1 * 5 + i].job}\n{int(list_poiska[nomer1 * 5 + i].salary)} р."
             text.append(string)
         text = "\n".join(text)
         for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
                 nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
-            key_dict["1"][f"{i + 1}"] = f"{i + 1}"
+            hz = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
+            key_dict["1"][f"{hz * 5 + i + 1}"] = f"{hz * 5 + i + 1}"
         key_dict["1"][">"] = "next"
         bot.send_message(call.message.chat.id, text, reply_markup=buttons_creator(key_dict))
     elif call.data == "about":
@@ -867,15 +936,15 @@ def callback2(call):
         text = call.message.text.split("\n")
         text = []
         nomer = user.count
-        _list = machinazii_s_poiskom()
+        _list = machinazii_s_poiskom(call.message.chat.id)
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
         text.append(f"{chelik.job}")
         text.append("")
-        text.append(f"Ожидаемая зарплата: {chelik.salary}")
-        text.append(f"Занятость: {chelik.employment}")
+        text.append(f"{chelik.salary}")
+        text.append(f"{chelik.employment}")
         text.append("")
         text.append(
-            f"Опыт работы: {chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
+            f"{chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
         buttons = buttons_creator({"1": {
             f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
             'Контакты': 'cont',
@@ -892,11 +961,11 @@ def callback2(call):
         nomer = user.count
         text.append("Вот контактная информация:")
         text.append("")
-        _list = machinazii_s_poiskom()
+        _list = machinazii_s_poiskom(call.message.chat.id)
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
-        text.append(f"ФИО: {chelik.name}")
-        text.append(f"Номер телефона: {chelik.phone}")
-        text.append(f"Адрес электронной почты: {chelik.mail}")
+        text.append(f"{chelik.name}")
+        text.append(f"{chelik.phone}")
+        text.append(f"{chelik.mail}")
         text = "\n".join(text)
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'about'}})
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
@@ -905,7 +974,7 @@ def callback2(call):
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
         nomer = user.count
-        _list = machinazii_s_poiskom()
+        _list = machinazii_s_poiskom(call.message.chat.id)
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
         pdf(chelik.id)
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return1'}})
