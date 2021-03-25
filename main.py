@@ -14,6 +14,7 @@ import datetime
 import re
 import numpy as np
 
+
 SMILE = ['↩']
 SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon", "python"},
             'frontend': {'фронтэнд', "фронт-энд", "фронтенд", "фронт-енд", "front", "front-end", "frontend"},
