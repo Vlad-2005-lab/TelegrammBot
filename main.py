@@ -14,7 +14,6 @@ import datetime
 import re
 import numpy as np
 
-
 SMILE = ['↩']
 SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon", "python"},
             'frontend': {'фронтэнд', "фронт-энд", "фронтенд", "фронт-енд", "front", "front-end", "frontend"},
@@ -24,7 +23,8 @@ SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon",
             "web": {"web", 'веб', "вэб"},
             '1c': {'1c', '1с'}
             }
-jobs = {"программист" ,"разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'actionscript', 'ada', 'agilent vee', 'algol',
+jobs = {"программист", "разработчик", 'java', '4th dimension/4d', 'abap', 'abc', 'actionscript', 'ada', 'agilent vee',
+        'algol',
         'alice',
         'angelscript', 'apex', 'apl', 'applescript', 'arc', 'arduino', 'asp', 'aspectj', 'assembly',
         'atlas', 'augeas', 'autohotkey', 'autoit', 'autolisp', 'automator', 'avenue', 'awk', 'bash',
@@ -124,6 +124,13 @@ error: {er}\033[0m""")
 
 
 def keyboard_creator(list_of_names):
+    """
+    Параметры:
+    list_of_names - это список с именами кнопок(['1', '2'] будет каждая кнопка в ряд)
+                                                [['1', '2'], '3'] первые 2 кнопки будут на 1 линии, а 3 снизу)
+    Возращает:
+    готовый класс клавиатуры в низу экрана
+    """
     returned_k = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     for i in list_of_names:
         if isinstance(i, list):
@@ -138,6 +145,22 @@ def keyboard_creator(list_of_names):
 
 
 def buttons_creator(dict_of_names, how_many_rows=7):
+    """
+    Параметры:
+    dict_of_names - это словарь, первые ключи могут быть любыми, они разделяют кнопки на ряды, а значениями этих ключей
+        являются другие словари. Первый их аргумент это текст кнопки, а 2 это callback_data(то что будет передаваться в
+        коллбек). Например: {
+                                '1': {
+                                    'текст первой кнопки': 'нажали на кнопку 1',
+                                    'текст второй кнопки': 'нажали на кнопку 2'
+                                    },
+                                '2': {
+                                    'текст третьей кнопки': 'нажали на кнопку 3'
+                                    }
+                            }
+    Возращает:
+    готовый класс кнопок под сообщением
+    """
     returned_k = types.InlineKeyboardMarkup(row_width=how_many_rows)
     for i in dict_of_names.keys():
         if type(dict_of_names[i]) is dict:
