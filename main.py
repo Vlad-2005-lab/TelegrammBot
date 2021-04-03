@@ -73,10 +73,21 @@ print('\033[35mDb was conected...')
 
 
 def tconv(x):
+    """
+    :param x: int; хз что передаётся, вроде секунды
+    :return: str; нормально выглядещую дату и время
+    """
     return time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x))
 
 
 def log(message=None, where='ne napisal', full=False, comments="None"):
+    """[
+    :param message: class; ответ из тг(message_handler)
+    :param where: str; место(имя функции) где вызывается эта функция
+    :param full: True/False
+    :param comments: str; хз, любой ваш коментарий
+    :return: в консоль пишет лог
+    """
     global count, history
     count += 1
     if history:
@@ -85,7 +96,7 @@ def log(message=None, where='ne napisal', full=False, comments="None"):
     elif full:
         try:
             print(f"""\033[33m{"-" * 100}
-time: \033[36m{0}\033[33m
+time: \033[36m{tconv(message.date)}\033[33m
 log №{count}
 from: {where}
 full: {full}
@@ -126,11 +137,9 @@ error: {er}\033[0m""")
 
 def keyboard_creator(list_of_names):
     """
-    Параметры:
-    list_of_names - это список с именами кнопок(['1', '2'] будет каждая кнопка в ряд)
-                                                [['1', '2'], '3'] первые 2 кнопки будут на 1 линии, а 3 снизу)
-    Возращает:
-    готовый класс клавиатуры в низу экрана
+    :param list_of_names: list; это список с именами кнопок(['1', '2'] будет каждая кнопка в ряд)
+    [['1', '2'], '3'] первые 2 кнопки будут на 1 линии, а 3 снизу)
+    :return: готовый класс клавиатуры в низу экрана
     """
     returned_k = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     for i in list_of_names:
@@ -147,21 +156,19 @@ def keyboard_creator(list_of_names):
 
 def buttons_creator(dict_of_names, how_many_rows=7):
     """
-    Параметры:
-    dict_of_names - это словарь, первые ключи могут быть любыми, они разделяют кнопки на ряды, а значениями этих ключей
-        являются другие словари. Первый их аргумент это текст кнопки, а 2 это callback_data(то что будет передаваться в
-        коллбек). Например: {
-                                '1': {
-                                    'текст первой кнопки': 'нажали на кнопку 1',
-                                    'текст второй кнопки': 'нажали на кнопку 2'
-                                    },
-                                '2': {
-                                    'текст третьей кнопки': 'нажали на кнопку 3'
-                                    }
-                            }
-    how_many_rows(по дефолту 7) - это максимальное количество кнопок в ряду
-    Возращает:
-    готовый класс кнопок под сообщением
+    :param dict_of_names: dict; это словарь, первые ключи могут быть любыми, они разделяют кнопки на ряды, а значениями этих ключей
+           являются другие словари. Первый их аргумент это текст кнопки, а 2 это callback_data(то что будет передаваться в
+           коллбек). Например: {
+                                   '1': {
+                                       'текст первой кнопки': 'нажали на кнопку 1',
+                                       'текст второй кнопки': 'нажали на кнопку 2'
+                                       },
+                                   '2': {
+                                       'текст третьей кнопки': 'нажали на кнопку 3'
+                                       }
+                               }
+    :param how_many_rows: int; это максимальное количество кнопок в ряду
+    :return: готовый класс кнопок под сообщением
     """
     returned_k = types.InlineKeyboardMarkup(row_width=how_many_rows)
     for i in dict_of_names.keys():
@@ -182,6 +189,9 @@ def buttons_creator(dict_of_names, how_many_rows=7):
 
 
 def update(message):
+    """
+    :param message: class; ответ из тг(message_handler)
+    """
     session = db_session.create_session()
     user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
     user.time = tconv(message.date)
@@ -189,6 +199,13 @@ def update(message):
 
 
 class Human:
+    """
+    супер пупер гениальная моя разработка
+    Это класс без параметров, но их можно добавлять сколько угодно к каждому отдельному объекту.
+    Например:
+    a = Human(name="Влад")
+    b = Human(name="Василь", teacher=True)
+    """
     def __init__(self, **args):
         for i in args.keys():
             if type(args[i]) is str:
@@ -198,6 +215,10 @@ class Human:
 
 
 def clean_lower(line):
+    """
+    :param line: str; строка, из которой надо кикнуть все символы и в нижний регистр перевести
+    :return: отворматированную строку
+    """
     global jobs
     line = str(line).lower()
     line = re.sub(r"[\\\/\.\,\?\!@\"\'#№%^&\*\+\-;–:—\(\)\[\]\{\}\-_<>«»]", " ", line).split()
@@ -211,6 +232,10 @@ def clean_lower(line):
 
 
 def search(tg_id=-1):
+    """
+    :param tg_id: int; тг id человека который ввёл параметры запроса
+    :return: list; список из моих гениальных классов(Human())
+    """
     try:
         list_of_peoples = []
         if tg_id == -1:
@@ -290,6 +315,10 @@ def search(tg_id=-1):
 
 
 def pdf(user_id):
+    """
+    создание пдф, это делал Василь, так что я хз
+    :param user_id: int; номер челика из таблицы people
+    """
     try:
         file = open('data/media/pdf.html', mode="w", encoding="utf-8")
     except Exception:
@@ -350,6 +379,11 @@ def pdf(user_id):
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
+    """
+    принимает все сообщения если функция никуда не переадресовала в другую
+    :param message: class, тг возращает
+    :return: переход в vilka(message)
+    """
     try:
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
@@ -424,6 +458,11 @@ def get_text_messages(message):
 
 
 def vilka(message):
+    """
+    выбор ветки
+    :param message: class; тг возвращает
+    :return: переход дальше по ветке, либо переход в саму в себя
+    """
     try:
         log(message=message, where="vilka")
         keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
@@ -478,6 +517,11 @@ def vilka(message):
 
 
 def staks(message):
+    """
+    ввод тегов для поиска
+    :param message: class, тг возвращает
+    :return: переход в employment(message)
+    """
     try:
         log(message=message, where="staks")
         session = db_session.create_session()
@@ -533,6 +577,11 @@ def staks(message):
 
 
 def employment(message):
+    """
+    выбор занятости для поиска
+    :param message: class; тг возращает
+    :return: переход в salary(message)
+    """
     try:
         log(message=message, where="employment")
         keyboard = keyboard_creator(
@@ -594,6 +643,11 @@ def employment(message):
 
 
 def salary(message):
+    """
+    ввод зарплаты для поиска, например(20000/20к/20k)
+    :param message: class; тг возвращает
+    :return: отправка отсортированного списка и переход в exit_to_vilka(message)
+    """
     try:
         log(message=message, where="salary")
         keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
@@ -671,6 +725,11 @@ def salary(message):
 
 
 def exit_to_vilka(message):
+    """
+    хз шо это
+    :param message: class; тг возвращает
+    :return: переход в vilka(message)
+    """
     try:
         log(message=message, where="exit_to_vilka")
         # session = db_session.create_session()
@@ -710,6 +769,11 @@ def exit_to_vilka(message):
 
 
 def main_menu(message):
+    """
+    не рабает, в разработке
+    :param message: class; тг возвращает
+    :return: ничего
+    """
     session = db_session.create_session()
     user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
     try:
@@ -750,6 +814,11 @@ def main_menu(message):
 @bot.callback_query_handler(
     func=lambda call: str(call.data).isdigit() or call.data in ['next', 'back', 'to start menu'])
 def callback_worker(call):
+    """
+    это навигация в самом списке подходящих людей
+    :param call: class; тг возвращает
+    :return: ничего
+    """
     if call.data == "back":
         text = call.message.text.split("\n")
         now_page = int(text[0].split()[1])
@@ -855,6 +924,11 @@ def callback_worker(call):
 
 @bot.callback_query_handler(func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about"])
 def callback2(call):
+    """
+    работа с определённым пользователем для списка
+    :param call:
+    :return:
+    """
     if call.data == 'return':
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
