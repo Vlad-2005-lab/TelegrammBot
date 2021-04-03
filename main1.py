@@ -257,7 +257,7 @@ def machinazii_s_poiskom(tg_id=-1):
             list_of_dodik.extend(part_4)
             return list_of_dodik
     except Exception as ex:
-        log(full=True, where="machinazii_s_poiskom", comments=str(ex))
+        log(full=True, where="search", comments=str(ex))
 
 
 def pdf(user_id):
@@ -505,7 +505,7 @@ def vilka(message):
 
 def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
     try:
-        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_1")
+        log(message=message, where="staks")
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
         try:
@@ -555,12 +555,12 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_1(message):
             return bot.register_next_step_handler(message,
                                                   porashnaja_funkcia_dla_poiska_rabotnikov_2)
     except Exception as er:
-        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_1", comments=str(er))
+        log(message=message, full=True, where="staks", comments=str(er))
 
 
 def porashnaja_funkcia_dla_poiska_rabotnikov_2(message):
     try:
-        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_2")
+        log(message=message, where="employment")
         keyboard = keyboard_creator(
             ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
              f"{emojize(SMILE[0], use_aliases=True)} Вернуться в меню"])
@@ -616,12 +616,12 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_2(message):
             bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:", reply_markup=keyboard)
             return bot.register_next_step_handler(message, porashnaja_funkcia_dla_poiska_rabotnikov_3)
     except Exception as er:
-        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_2", comments=str(er))
+        log(message=message, full=True, where="employment", comments=str(er))
 
 
 def porashnaja_funkcia_dla_poiska_rabotnikov_3(message):
     try:
-        log(message=message, where="porashnaja_funkcia_dla_poiska_rabotnikov_3")
+        log(message=message, where="salary")
         keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                      "Расписание обучения"])
         session = db_session.create_session()
@@ -684,12 +684,12 @@ def porashnaja_funkcia_dla_poiska_rabotnikov_3(message):
             return bot.register_next_step_handler(message, porasnij_poisk_rabochih)
             # return bot.register_next_step_handler(message, vilka, list_poiska)
     except Exception as er:
-        log(message=message, full=True, where="porashnaja_funkcia_dla_poiska_rabotnikov_3", comments=str(er))
+        log(message=message, full=True, where="salary", comments=str(er))
 
 
 def porasnij_poisk_rabochih(message):
     try:
-        log(message=message, where="porasnij_poisk_rabochih")
+        log(message=message, where="exit_to_vilka")
         # session = db_session.create_session()
         # keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
         #                              "Расписание обучения"])
@@ -723,7 +723,7 @@ def porasnij_poisk_rabochih(message):
             return bot.register_next_step_handler(message, vilka)
         return bot.register_next_step_handler(message, porasnij_poisk_rabochih)
     except Exception as er:
-        log(message=message, full=True, where="porasnij_poisk_rabochih", comments=str(er))
+        log(message=message, full=True, where="exit_to_vilka", comments=str(er))
 
 
 def main_menu(message):
