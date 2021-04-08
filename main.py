@@ -135,13 +135,14 @@ comments: {comments}
 error: {er}\033[0m""")
 
 
-def keyboard_creator(list_of_names):
+def keyboard_creator(list_of_names, one_time=True):
     """
     :param list_of_names: list; это список с именами кнопок(['1', '2'] будет каждая кнопка в ряд)
     [['1', '2'], '3'] первые 2 кнопки будут на 1 линии, а 3 снизу)
+    :param one_time: bool; скрыть клаву после нажатия или нет
     :return: готовый класс клавиатуры в низу экрана
     """
-    returned_k = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    returned_k = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=one_time)
     for i in list_of_names:
         if isinstance(i, list):
             string = ""
@@ -154,7 +155,7 @@ def keyboard_creator(list_of_names):
     return returned_k
 
 
-def buttons_creator(dict_of_names, how_many_rows=7):
+def buttons_creator(dict_of_names, how_many_rows=8):
     """
     :param dict_of_names: dict; это словарь, первые ключи могут быть любыми, они разделяют кнопки на ряды, а значениями этих ключей
            являются другие словари. Первый их аргумент это текст кнопки, а 2 это callback_data(то что будет передаваться в
@@ -206,6 +207,7 @@ class Human:
     a = Human(name="Влад")
     b = Human(name="Василь", teacher=True)
     """
+
     def __init__(self, **args):
         for i in args.keys():
             if type(args[i]) is str:
@@ -1017,6 +1019,7 @@ def callback2(call):
         data.arg3 = user.arg3
         data.tg_id_people = chelik.id
         session.add(data)
+        session.commit()
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'about'}})
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons)
@@ -1033,6 +1036,8 @@ def callback2(call):
         data.arg2 = user.arg2
         data.arg3 = user.arg3
         data.tg_id_people = chelik.id
+        session.add(data)
+        session.commit()
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return1'}})
         bot.send_document(call.message.chat.id, open("data/media/resume.pdf", 'rb'), reply_markup=buttons)
 
