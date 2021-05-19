@@ -21,5 +21,6 @@ class People(SqlAlchemyBase, UserMixin):
     about_me = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     job = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     education = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    liked = sqlalchemy.Column(sqlalchemy.String, nullable=True, default="")
     count = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
     tags = sqlalchemy.Column(sqlalchemy.String)
