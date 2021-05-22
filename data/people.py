@@ -23,4 +23,4 @@ class People(SqlAlchemyBase, UserMixin):
     education = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     liked = sqlalchemy.Column(sqlalchemy.String, nullable=True, default="")
     count = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
-    tags = sqlalchemy.Column(sqlalchemy.String)
+    tags = sqlalchemy.Column(sqlalchemy.String, default="")

@@ -3,6 +3,10 @@
 # import random
 import telebot
 import pdfcrowd
+import time
+import datetime
+import re
+import numpy as np
 from emoji import emojize
 from telebot import types
 from data.banned import Ban
@@ -10,12 +14,8 @@ from data.people import People
 from data.boss import Boss
 from data.nejronka import Data
 from data import db_session
-import time
-import datetime
-import re
-import numpy as np
 
-SMILE = ['↩', "🏠"]
+SMILE = ['↩', "🏠", "🤍", "❤"]
 SINONIMS = {'python': {'питон', "пайтон", 'pyton', "piton", "puthon", "python"},
             'frontend': {'фронтэнд', "фронт-энд", "фронтенд", "фронт-енд", "front", "front-end", "frontend"},
             'backend': {'бэкэнд', 'бэкенд', "бэк-энд", "бекенд", "бекенд-енд", "back", "back-end", "backend"},
@@ -84,8 +84,6 @@ def correctemail(email):
     if email.count('@') > 1 or email.count('@') == 0:
         return False
     [name, domain] = email.split('@')
-    if len(domain) < 3:
-        return False
     if len(domain) > 256:
         return False
     if domain.count('.') == 0:
@@ -287,6 +285,77 @@ def clean_lower(line):
     return list(set(new_line))
 
 
+def search_workers(tg_id):
+    try:
+        list_of_peoples = []
+        session = db_session.create_session()
+        jobler = session.query(Ban).filter(Ban.tg_id == tg_id).first()
+        request_of_jobs = clean_lower(jobler.arg1.lower())
+        bosses = session.query(Boss).all()
+        request_of_jobs = set(request_of_jobs).intersection(jobs)
+        part_1 = []
+        part_2 = []
+        part_3 = []
+        part_4 = []
+        for i in bosses:
+            if len(request_of_jobs.intersection(set(i.tags.split()))) > 0:
+                p = (len(request_of_jobs.intersection(set(i.tags.split())))) / (len(request_of_jobs))
+                s = abs(int(jobler.arg3) - int(i.salary)) / 20000
+                np1 = np.array([0, 0, 0, 0])
+                np2 = np.array([0, 0, 0, 0])
+                for hz in i.timetable.split():
+                    if hz == "Стажировка":
+                        np2[0] = 1
+                    elif hz == "Проектная работа":
+                        np2[1] = 1
+                    elif hz == "Частичная занятость":
+                        np2[2] = 1
+                    elif hz == "Полная занятость":
+                        np2[3] = 1
+                    elif hz == "Все варианты":
+                        np2 = np.array([1, 1, 1, 1])
+                if jobler.arg2 == "Стажировка":
+                    np1[0] = 1
+                elif jobler.arg2 == "Проектная работа":
+                    np1[1] = 1
+                elif jobler.arg2 == "Частичная занятость":
+                    np1[2] = 1
+                elif jobler.arg2 == "Полная занятость":
+                    np1[3] = 1
+                elif jobler.arg2 == "Все варианты":
+                    np1 = np.array([1, 1, 1, 1])
+                if any(list(np1 * np2)):
+                    e = 1
+                else:
+                    e = 0.8
+                if i.salary <= int(jobler.arg3):
+                    r = p + e - s
+                else:
+                    r = p + e + s
+                if p >= 0.75:
+                    part_1.append(Human(id=i.id, job=i.name_vacancy, salary=i.salary, r=r))
+                elif p >= 0.5:
+                    part_2.append(Human(id=i.id, job=i.name_vacancy, salary=i.salary, r=r))
+                elif p >= 0.25:
+                    part_3.append(Human(id=i.id, job=i.name_vacancy, salary=i.salary, r=r))
+                elif p >= 0:
+                    part_4.append(Human(id=i.id, job=i.name_vacancy, salary=i.salary, r=r))
+                else:
+                    log(message=None, where="махинации с поиском в распределении по группам", full=False,
+                        comments=f"p = {p}")
+        part_1.sort(key=lambda x: -x.r)
+        part_2.sort(key=lambda x: -x.r)
+        part_3.sort(key=lambda x: -x.r)
+        part_4.sort(key=lambda x: -x.r)
+        list_of_peoples.extend(part_1)
+        list_of_peoples.extend(part_2)
+        list_of_peoples.extend(part_3)
+        list_of_peoples.extend(part_4)
+        return list_of_peoples
+    except Exception as ex:
+        log(full=True, where="search_workers", comments=str(ex))
+
+
 def search(tg_id=-1):
     """
     :param tg_id: int; тг id человека который ввёл параметры запроса
@@ -295,7 +364,6 @@ def search(tg_id=-1):
     try:
         list_of_peoples = []
         if tg_id == -1:
-            # adekvatnaja hren, no ne sejchas
             session = db_session.create_session()
             users = session.query(People).all()
             for i in users:
@@ -433,6 +501,81 @@ def pdf(user_id):
     client.convertFileToFile("data/media/pdf.html", 'data/media/resume.pdf')
 
 
+def have_vacancy(message):
+    session = db_session.create_session()
+    user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
+    try:
+        if user.ban and user.count == 0:
+            # video = open("data/media/БАН.mp4", "rb")
+            bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
+                             reply_markup=types.ReplyKeyboardRemove())
+            # bot.send_video(message.from_user.id, video)
+            user.count += 1
+            session.commit()
+            return bot.register_next_step_handler(message, get_text_messages)
+        elif user.ban and user.count != 0:
+            return bot.register_next_step_handler(message, get_text_messages)
+    except Exception:
+        user = Ban()
+        user.tg_id = message.from_user.id
+        user.ban = False
+        user.count = 0
+        session.add(user)
+        session.commit()
+    update(message)
+    log(message=message, where="get_text_messages")
+    keyboard = keyboard_creator([["Поиск работника", "Поиск работы"],
+                                 "Оставить резюме работодателя", "Оставить резюме работника",
+                                 "Запись на обучение в ШП"])
+    user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
+    user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
+    hz = 0
+    try:
+        if user_like_people.phone:
+            hz += 1
+    except Exception:
+        pass
+    try:
+        if user_like_boss.phone:
+            hz += 1
+    except Exception:
+        pass
+    if hz > 0:
+        bot.send_message(message.from_user.id, f"Здраствуйте")
+        list_of_buttons = [["Поиск работника", "Поиск работы"],
+                           "Запись на обучение",
+                           "Удалить всю информацию о себе"]
+        try:
+            if len(user_like_people.liked) > 0:
+                list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
+        except Exception:
+            pass
+        try:
+            if len(user_like_boss.liked) > 0:
+                list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
+        except Exception:
+            pass
+        aboba = []
+        try:
+            if user_like_people.phone:
+                aboba.append(["Резюме работника", "Удалить резюме работника"])
+        except Exception:
+            aboba.append("Создать резюме работника")
+        try:
+            if user_like_boss.phone:
+                aboba.append(["Резюме работодателя", "Удалить резюме работодателя"])
+        except Exception:
+            aboba.append("Создать резюме работодателя")
+        for i in aboba:
+            list_of_buttons.insert(1, i)
+        keyboard = keyboard_creator(list_of_buttons)
+        bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
+        return bot.register_next_step_handler(message, main_menu)
+    bot.send_message(message.from_user.id, f"Здраствуйте")
+    bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
+    return bot.register_next_step_handler(message, vilka)
+
+
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
     """
@@ -441,117 +584,7 @@ def get_text_messages(message):
     :return: переход в vilka(message)
     """
     try:
-        session = db_session.create_session()
-        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
-        try:
-            if user.ban and user.count == 0:
-                # video = open("data/media/БАН.mp4", "rb")
-                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
-                                 reply_markup=types.ReplyKeyboardRemove())
-                # bot.send_video(message.from_user.id, video)
-                user.count += 1
-                session.commit()
-                return bot.register_next_step_handler(message, get_text_messages)
-            elif user.ban and user.count != 0:
-                return bot.register_next_step_handler(message, get_text_messages)
-        except Exception:
-            user = Ban()
-            user.tg_id = message.from_user.id
-            user.ban = False
-            user.count = 0
-            session.add(user)
-            session.commit()
-        update(message)
-        log(message=message, where="get_text_messages")
-        # answer = loginned(message)
-        # try:
-        #     if answer[0] == "r":
-        #         return bot.register_next_step_handler(answer[1], register)
-        #     try:
-        #         answer = bool(answer)
-        #     except Exception:
-        #         bot.send_message(message.from_user.id,
-        #                          f"Ты забанен, теряйся клоун")
-        #         return 0
-        # except Exception:
-        #     pass
-        # if not answer:
-        #     if message.text in ["Привет", "/start", 'Здравствуйте']:
-        #         keyboard = keyboard_creator([["Хорошо",
-        #                                       "Нет"]])
-        #         bot.send_message(message.from_user.id,
-        #                          f"Добрый день {message.from_user.username if message.from_user.username else str(message.from_user.last_name) + ' ' + message.from_user.first_name}, предлагаю вам указать свои данные",
-        #                          reply_markup=keyboard)
-        #     elif message.text in ["Указать информацию", "Хорошо"]:
-        #         keyboard = keyboard_creator(['Искать работу', 'Искать людей'])
-        #         bot.send_message(message.from_user.id,
-        #                          f"Добро пожаловать в раздел регистрации, ответы пишите в одном сообщении. Если что-то пойдёт не так, вы сможете перезаполнить о себе данные")
-        #         bot.send_message(message.from_user.id,
-        #                          f"Вы хотите нанять на работу людей или нанятся на работу?",
-        #                          reply_markup=keyboard)
-        #         return bot.register_next_step_handler(message, register)
-        #     elif message.text == "Нет":
-        #         bot.send_message(message.from_user.id, "Напишите, когда передумаете")
-        #     else:
-        #         keyboard = keyboard_creator([["Здравствуйте",
-        #                                       "Привет"],
-        #                                      "Указать информацию"])
-        #         bot.send_message(message.from_user.id,
-        #                          "Извините, я вас не понимаю.\nПредагаю вам написать:\nПривет\nЗдравствуйте\nУказать информацию",
-        #                          reply_markup=keyboard)
-        # else:
-        #     bot.send_message(message.from_user.id,
-        #                      f"Добрый день {message.from_user.username if message.from_user.username else message.from_user.last_name + ' ' + message.from_user.first_name}")
-        #     return bot.register_next_step_handler(message, main_menu)
-        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                     "Расписание обучения"])
-        # bot.send_message(message.from_user.id, f"Здраствуйте {emojize('⬆', use_aliases=True)}")
-        user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
-        user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
-        hz = 0
-        try:
-            if user_like_people.name:
-                hz += 1
-        except Exception:
-            pass
-        try:
-            if user_like_boss.fio:
-                hz += 1
-        except Exception:
-            pass
-        if hz > 0:
-            bot.send_message(message.from_user.id, f"Здраствуйте")
-            list_of_buttons = [["Поиск работника", "Поиск работы"],
-                               "Запись на обучение",
-                               "Удалить всю информацию о себе"]
-            try:
-                if len(user_like_people.liked) > 0:
-                    list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
-            except Exception:
-                pass
-            try:
-                if len(user_like_boss.liked) > 0:
-                    list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
-            except Exception:
-                pass
-            aboba = []
-            try:
-                if user_like_people.phone:
-                    aboba.append("Резюме как работника")
-            except Exception:
-                aboba.append("Создать резюме работника")
-            try:
-                if user_like_boss.phone:
-                    aboba.append("Резюме как работодателя")
-            except Exception:
-                aboba.append("Создать резюме работодателя")
-            list_of_buttons.insert(1, aboba)
-            keyboard = keyboard_creator(list_of_buttons)
-            bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, main_menu)
-        bot.send_message(message.from_user.id, f"Здраствуйте")
-        bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-        return bot.register_next_step_handler(message, vilka)
+        return have_vacancy(message)
     except Exception as er:
         log(message=message, where="get_text_messages", comments=str(er))
 
@@ -587,76 +620,41 @@ def vilka(message):
             session.add(user)
             session.commit()
         update(message)
-        if message.text == "Поиск работника":
+        if message.text == "\\start":
+            return have_vacancy(message)
+        elif message.text == "Поиск работника":
             bot.send_message(message.from_user.id,
                              f"Какая у вас вакансия? Введите название должности, основной стек через пробелы",
                              reply_markup=keyboard)
             return bot.register_next_step_handler(message, staks)
         elif message.text == "Поиск работы":
             bot.send_message(message.from_user.id,
+                             f"Кем вы хотите работать? Введите название должности, основной стек через пробелы",
+                             reply_markup=keyboard)
+            return bot.register_next_step_handler(message, staks, who=1)
+        elif message.text == "Оставить резюме работодателя":
+            bot.send_message(message.from_user.id,
+                             f"Введите своё имя.",
+                             reply_markup=keyboard)
+            return bot.register_next_step_handler(message, start_creating_vacancy)
+        elif message.text == "Оставить резюме работника":
+            bot.send_message(message.from_user.id,
+                             f"Введите своё имя.",
+                             reply_markup=keyboard)
+            return bot.register_next_step_handler(message, start_creating_tender)
+        elif message.text == "Запись на обучение в ШП":
+            bot.send_message(message.from_user.id,
                              f"Эта функция в находится разработке. Выберите другой вариант в меню.")
             return bot.register_next_step_handler(message, vilka)
-        elif message.text == "Оставить резюме":
-            keyboard = keyboard_creator(
-                ["Я работодатель", "Я роботник", f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
-            bot.send_message(message.from_user.id,
-                             f"Выбирите, какое вы хотите оставить резюме.", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, choise_wich_resume)
-        elif message.text == "Запись на обучение":
-            bot.send_message(message.from_user.id,
-                             f"Эта функция в находится разработке. Выберите другой вариант в меню.")
-            return bot.register_next_step_handler(message, vilka)
-        elif message.text == "Расписание обучения":
-            bot.send_message(message.from_user.id,
-                             f"Эта функция в находится разработке. Выберите другой вариант в меню.")
-            return bot.register_next_step_handler(message, vilka)
+        # elif message.text == "Расписание обучения":
+        #     bot.send_message(message.from_user.id,
+        #                      f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        #     return bot.register_next_step_handler(message, vilka)
         else:
             bot.send_message(message.from_user.id, f"Извините, но такого варианта нет.")
             return bot.register_next_step_handler(message, vilka)
     except Exception as er:
         log(message=message, full=True, where="vilka", comments=str(er))
-
-
-def choise_wich_resume(message):
-    try:
-        session = db_session.create_session()
-        user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
-        try:
-            if user.ban and user.count == 0:
-                video = open("data/media/БАН.mp4", "rb")
-                bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
-                                 reply_markup=types.ReplyKeyboardRemove())
-                bot.send_video(message.from_user.id, video)
-                user.count += 1
-                session.commit()
-                return bot.register_next_step_handler(message, get_text_messages)
-            elif user.ban and user.count != 0:
-                return bot.register_next_step_handler(message, get_text_messages)
-        except Exception:
-            user = Ban()
-            user.tg_id = message.from_user.id
-            user.ban = False
-            user.count = 0
-            # user.time = tconv(message.date)
-            session.add(user)
-            session.commit()
-        update(message)
-        keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
-        if message.text == "Я работодатель":
-            bot.send_message(message.from_user.id,
-                             f"Введите своё имя.",
-                             reply_markup=keyboard)
-            return bot.register_next_step_handler(message, start_creating_vacancy)
-        elif message.text == "Я роботник":
-            bot.send_message(message.from_user.id,
-                             f"Введите своё имя.",
-                             reply_markup=keyboard)
-            return bot.register_next_step_handler(message, start_creating_tender)
-        else:
-            bot.send_message(message.from_user.id, f"Извините, но такого варианта нет.")
-            return bot.register_next_step_handler(message, choise_wich_resume)
-    except Exception as er:
-        print(er)
 
 
 def start_creating_vacancy(message):
@@ -685,10 +683,8 @@ def start_creating_vacancy(message):
             session.commit()
         update(message)
         if message.text in [f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню", "\\start"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+
+            return have_vacancy(message)
         else:
             bos = Boss()
             bos.fio = message.text
@@ -733,10 +729,9 @@ def creating_vacancy(message):
         update(message)
         user = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
         if message.text in [f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню", "\\start"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+            session.delete(user)
+            session.commit()
+            return have_vacancy(message)
         elif user.count == 1:
             phone = ""
             for i in message.text:
@@ -746,7 +741,7 @@ def creating_vacancy(message):
                 user.phone = phone
                 user.count += 1
                 session.commit()
-                bot.send_message(message.from_user.id, f"Введите свой email.", reply_markup=keyboard)
+                bot.send_message(message.from_user.id, f"Введите свой email.", reply_markup=types.ReplyKeyboardRemove())
                 return bot.register_next_step_handler(message, creating_vacancy)
             else:
                 bot.send_message(message.from_user.id, f"Вы ввели не правильный номер телефона.", reply_markup=keyboard)
@@ -757,45 +752,121 @@ def creating_vacancy(message):
                 user.email = email
                 user.count += 1
                 session.commit()
-                bot.send_message(message.from_user.id, f"Введите город в котором вы живете.", reply_markup=keyboard)
+                bot.send_message(message.from_user.id, f"Введите город в котором вы живете.",
+                                 reply_markup=types.ReplyKeyboardRemove())
                 return bot.register_next_step_handler(message, creating_vacancy)
             else:
                 bot.send_message(message.from_user.id, f"Вы ввели не правильный email.", reply_markup=keyboard)
                 return bot.register_next_step_handler(message, creating_vacancy)
         elif user.count == 3:
-            user.city = message.text
-            user.count = 0
+            user.city = str(message.text)
+            user.count += 1
             session.commit()
-            user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
-            user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
-            list_of_buttons = [["Поиск работника", "Поиск работы"],
-                               "Запись на обучение",
-                               "Удалить всю информацию о себе"]
-            try:
-                if len(user_like_people.liked) > 0:
-                    list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
-            except Exception:
-                pass
-            try:
-                if len(user_like_boss.liked) > 0:
-                    list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
-            except Exception:
-                pass
-            aboba = []
-            try:
-                if user_like_boss.phone:
-                    aboba.append("Резюме как работодателя")
-            except Exception:
-                aboba.append("Создать резюме работодателя")
-            try:
-                if user_like_people.phone:
-                    aboba.append("Резюме как работника")
-            except Exception:
-                aboba.append("Создать резюме работника")
-            list_of_buttons.insert(1, aboba)
-            keyboard = keyboard_creator(list_of_buttons)
-            bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, main_menu)
+            bot.send_message(message.from_user.id, f"Введите название должности/ей, основной стек через пробелы",
+                             reply_markup=types.ReplyKeyboardRemove())
+            return bot.register_next_step_handler(message, creating_vacancy)
+        elif user.count == 4:
+            user.count += 1
+            session.commit()
+            list_of_jobs = str(message.text).replace(";", " ").replace("/", " ").replace(
+                "|", " ").replace("~", " ").replace(":", " ").replace("{", " ").replace("}", " ").replace("[",
+                                                                                                          " ").replace(
+                "]", " ").replace("+", " ").replace("-", " ")
+            # nekotorie mohinacii c vvodom
+            user.name_vacancy = ", ".join(list_of_jobs.split())
+            session.commit()
+            bot.send_message(message.from_user.id, f"Напишите свои требования к работнику/ам.",
+                             reply_markup=types.ReplyKeyboardRemove())
+            return bot.register_next_step_handler(message, creating_vacancy)
+        elif user.count == 5:
+            user.count += 1
+            user.trebovanija = message.text
+            session.commit()
+            text = user.name_vacancy + " " + user.trebovanija
+            shit = ""
+            for sign in text:
+                if sign.isalpha() or sign.isdigit() or sign == " ":
+                    shit += sign
+            text = shit
+            tags = []
+            for word in text.split():
+                skip = False
+                for keys in SINONIMS.keys():
+                    if word in list(SINONIMS[keys]):
+                        tags.append(keys)
+                        skip = True
+                        break
+                if skip:
+                    continue
+                if word in jobs:
+                    tags.append(word)
+                    continue
+            tags = list(set(tags))
+            user.tags = " ".join(tags)
+            session.commit()
+            bot.send_message(message.from_user.id, f"Какую ЗП вы хотели бы платить работнику/ам?")
+            return bot.register_next_step_handler(message, creating_vacancy)
+        elif user.count == 6:
+            govnolist = re.findall(r"\b\d+k*\b", str(message.text).replace("к", "k"))
+            govnolist = [str(i).replace("k", "000") for i in govnolist]
+            govnolist = list(map(int, govnolist))
+            if not govnolist:
+                keyboard = keyboard_creator([f"{emojize(SMILE[0], use_aliases=True)} Вернуться в меню"])
+                bot.send_message(message.from_user.id, f"Вы не ввели ЗП, попробуйте ещё раз.", reply_markup=keyboard)
+                return bot.register_next_step_handler(message, creating_vacancy)
+            user.salary = sum(govnolist) / len(govnolist)
+            user.count += 1
+            session.commit()
+            keyboard = keyboard_creator(
+                ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
+                 f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
+            bot.send_message(message.from_user.id, f"Какую занятость вы предлогаете?",
+                             reply_markup=keyboard)
+            return bot.register_next_step_handler(message, creating_vacancy)
+        elif user.count == 7:
+            if message.text in ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость",
+                                "Все варианты"]:
+                user.count = 0
+                user.timetable = message.text
+                session.commit()
+                user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
+                user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
+                list_of_buttons = [["Поиск работника", "Поиск работы"],
+                                   "Запись на обучение",
+                                   "Удалить всю информацию о себе"]
+                try:
+                    if len(user_like_people.liked) > 0:
+                        list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
+                except Exception:
+                    pass
+                try:
+                    if len(user_like_boss.liked) > 0:
+                        list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
+                except Exception:
+                    pass
+                aboba = []
+                try:
+                    if user_like_people.phone:
+                        aboba.append(["Резюме работника", "Удалить резюме работника"])
+                except Exception:
+                    aboba.append("Создать резюме работника")
+                try:
+                    if user_like_boss.phone:
+                        aboba.append(["Резюме работодателя", "Удалить резюме работодателя"])
+                except Exception:
+                    aboba.append("Создать резюме работодателя")
+                for i in aboba:
+                    list_of_buttons.insert(1, i)
+                keyboard = keyboard_creator(list_of_buttons)
+                bot.send_message(message.from_user.id, f"Вы в главном меню", reply_markup=keyboard)
+                return bot.register_next_step_handler(message, main_menu)
+            else:
+                keyboard = keyboard_creator(
+                    ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
+                     f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
+                bot.send_message(message.from_user.id, f"К сожалению нет такого варианта, попробуйте другой вариант.",
+                                 reply_markup=keyboard)
+                return bot.register_next_step_handler(message, creating_vacancy)
     except Exception as er:
         print(er)
 
@@ -804,7 +875,7 @@ def creating_tender(message):
     pass
 
 
-def staks(message):
+def staks(message, who=0):
     """
     ввод тегов для поиска
     :param message: class, тг возвращает
@@ -839,10 +910,7 @@ def staks(message):
         keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
                                      "Расписание обучения"])
         if message.text in ["\\start", f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+            return have_vacancy(message)
         else:
             list_of_jobs = str(message.text).replace(";", " ").replace("/", " ").replace(
                 "|", " ").replace("~", " ").replace(":", " ").replace("{", " ").replace("}", " ").replace("[",
@@ -858,13 +926,12 @@ def staks(message):
                 ["Стажировка", "Проектная работа", "Частичная занятость", "Полная занятость", "Все варианты",
                  f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
             bot.send_message(message.from_user.id, f"Что вы предлагаете?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message,
-                                                  employment)
+            return bot.register_next_step_handler(message, employment, who)
     except Exception as er:
         log(message=message, full=True, where="staks", comments=str(er))
 
 
-def employment(message):
+def employment(message, who=0):
     """
     выбор занятости для поиска
     :param message: class; тг возращает
@@ -900,10 +967,7 @@ def employment(message):
             session.close()
         update(message)
         if message.text in [f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню", "\\start"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+            return have_vacancy(message)
         else:
             if message.text == "Стажировка":
                 pass
@@ -925,12 +989,12 @@ def employment(message):
             session.commit()
             session.close()
             bot.send_message(message.from_user.id, f"Введите примерную зарплату в рублях:", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, salary)
+            return bot.register_next_step_handler(message, salary, who)
     except Exception as er:
         log(message=message, full=True, where="employment", comments=str(er))
 
 
-def salary(message):
+def salary(message, who=0):
     """
     ввод зарплаты для поиска, например(20000/20к/20k)
     :param message: class; тг возвращает
@@ -963,10 +1027,7 @@ def salary(message):
             session.commit()
         update(message)
         if message.text in [f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню", "\\start"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+            return have_vacancy(message)
         else:
             govnolist = re.findall(r"\b\d+k*\b", str(message.text).replace("к", "k"))
             govnolist = [str(i).replace("k", "000") for i in govnolist]
@@ -978,26 +1039,41 @@ def salary(message):
             bot.send_message(message.from_user.id, f"Начинаем поиск")
             user.arg3 = sum(govnolist) / len(govnolist)
             session.commit()
-            list_poiska = search(message.from_user.id)
+            if who:
+                list_poiska = search_workers(message.from_user.id)
+            else:
+                list_poiska = search(message.from_user.id)
             if len(list_poiska) != 0:
-                key_dict = {'1': {}}
-                if len(list_poiska) > 5:
-                    key_dict["1"]["<"] = "back"
-                text = f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
-                _list = []
-                for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
-                    string = f"{1 + i}. {list_poiska[i].job}\n{list_poiska[i].salary} р."
-                    _list.append(string)
-                text += "\n".join(_list)
-                for i in range(1, len(_list) + 1):
-                    key_dict["1"][f"{i}"] = f"{i}"
-                # key_dict["1"]["2"] = "2"
-                # key_dict["1"]["3"] = "3"
-                # key_dict["1"]["4"] = "4"
-                # key_dict["1"]["5"] = "5"
-                if len(list_poiska) > 5:
-                    key_dict["1"][">"] = "next"
-                bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
+                if who:
+                    key_dict = {'1': {}}
+                    if len(list_poiska) > 5:
+                        key_dict["1"]["<"] = "back_boss"
+                    text = f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
+                    _list = []
+                    for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                        string = f"{1 + i}. {list_poiska[i].job}\n{list_poiska[i].salary} р."
+                        _list.append(string)
+                    text += "\n".join(_list)
+                    for i in range(1, len(_list) + 1):
+                        key_dict["1"][f"{i}"] = f"{i} boss"
+                    if len(list_poiska) > 5:
+                        key_dict["1"][">"] = "next_boss"
+                    bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
+                else:
+                    key_dict = {'1': {}}
+                    if len(list_poiska) > 5:
+                        key_dict["1"]["<"] = "back"
+                    text = f"Страница 1 из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}\n\n"
+                    _list = []
+                    for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                        string = f"{1 + i}. {list_poiska[i].job}\n{list_poiska[i].salary} р."
+                        _list.append(string)
+                    text += "\n".join(_list)
+                    for i in range(1, len(_list) + 1):
+                        key_dict["1"][f"{i}"] = f"{i} rab"
+                    if len(list_poiska) > 5:
+                        key_dict["1"][">"] = "next"
+                    bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
             else:
                 text = "По вашему запросу ничего не найдено"
                 bot.send_message(message.from_user.id, text)
@@ -1020,37 +1096,8 @@ def exit_to_vilka(message):
     """
     try:
         log(message=message, where="exit_to_vilka")
-        # session = db_session.create_session()
-        # keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-        #                              "Расписание обучения"])
-        # user = session.query(Ban).filter(Ban.tg_id == message.from_user.id).first()
-        # try:
-        #     if user.ban and user.count == 0:
-        #         video = open("data/media/БАН.mp4", "rb")
-        #         bot.send_message(message.from_user.id, "Вы забанены. Можете написать в поддержку",
-        #                          reply_markup=types.ReplyKeyboardRemove())
-        #         bot.send_video(message.from_user.id, video)
-        #         user.count += 1
-        #         session.commit()
-        #         return bot.register_next_step_handler(message, get_text_messages)
-        #     elif user.count != 0:
-        #         return bot.register_next_step_handler(message, get_text_messages)
-        # except Exception:
-        #     user = Ban()
-        #     user.tg_id = message.from_user.id
-        #     user.ban = False
-        #     user.count = 0
-        #     user.time = tconv(message.date)
-        #     session.add(user)
-        #     session.commit()
-        # update(message)
-        # bot.send_message(message.from_user.id, f"ss", reply_markup=keyboard)
-        # return bot.register_next_step_handler(message, vilka)
         if message.text in [f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню", "\\start"]:
-            keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                         "Расписание обучения"])
-            bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-            return bot.register_next_step_handler(message, vilka)
+            return have_vacancy(message)
         return bot.register_next_step_handler(message, exit_to_vilka)
     except Exception as er:
         log(message=message, full=True, where="exit_to_vilka", comments=str(er))
@@ -1095,10 +1142,29 @@ def main_menu(message):
         except Exception:
             pass
         session.commit()
-        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                     "Расписание обучения"])
-        bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
-        return bot.register_next_step_handler(message, vilka)
+        return have_vacancy(message)
+    elif message.text == "Поиск работника":
+        keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
+        bot.send_message(message.from_user.id,
+                         f"Какая у вас вакансия? Введите название должности, основной стек через пробелы",
+                         reply_markup=keyboard)
+        return bot.register_next_step_handler(message, staks)
+    elif message.text == "Поиск работы":
+        keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
+        bot.send_message(message.from_user.id,
+                         f"Кем вы хотите работать? Введите название должности, основной стек через пробелы",
+                         reply_markup=keyboard)
+        return bot.register_next_step_handler(message, staks, who=1)
+    elif message.text == "Удалить резюме работника":
+        user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
+        session.delete(user_like_people)
+        session.commit()
+        return have_vacancy(message)
+    elif message.text == "Удалить резюме работодателя":
+        user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
+        session.delete(user_like_boss)
+        session.commit()
+        return have_vacancy(message)
     else:
         user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
         user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
@@ -1112,28 +1178,29 @@ def main_menu(message):
             pass
         try:
             if len(user_like_boss.liked) > 0:
-                list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
+                list_of_buttons.insert(1, ["Посмотреть избранные вакансии", "Очистить список"])
         except Exception:
             pass
         aboba = []
         try:
             if user_like_people.phone:
-                aboba.append("Резюме как работника")
+                aboba.append(["Открыть резюме работника", "Удалить резюме работника"])
         except Exception:
             aboba.append("Создать резюме работника")
         try:
             if user_like_boss.phone:
-                aboba.append("Резюме как работодателя")
+                aboba.append(["Открыть резюме работодателя", "Удалить резюме работодателя"])
         except Exception:
             aboba.append("Создать резюме работодателя")
-        list_of_buttons.insert(1, aboba)
+        for i in aboba:
+            list_of_buttons.insert(1, i)
         keyboard = keyboard_creator(list_of_buttons)
         bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
         return bot.register_next_step_handler(message, main_menu)
 
 
 @bot.callback_query_handler(
-    func=lambda call: str(call.data).isdigit() or call.data in ['next', 'back', 'to start menu'])
+    func=lambda call: (call.data.split()[0].isdigit() and ((call.data.split()[1] in ["boss", "rab"]) if " " in call.data else 0) or call.data in ['next', 'back', "back_boss", "next_boss"]))
 def callback_worker(call):
     """
     это навигация в самом списке подходящих людей
@@ -1209,41 +1276,51 @@ def callback_worker(call):
             text = "\n".join(text)
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
-    elif call.data == "to start menu":
-        keyboard = keyboard_creator([["Поиск работника", "Поиск работы"], "Оставить резюме", "Запись на обучение",
-                                     "Расписание обучения"])
-        bot.send_message(call.message.chat.id, f"Что вас интересует?", reply_markup=keyboard)
-        return bot.register_next_step_handler(call.message, vilka)
+    elif call.data == "back_boss":
+        print(call.data)
+    elif call.data == "next_boss":
+        print(call.data)
+    elif call.data.split()[1] == "boss" and call.data.split()[0].isdigit():
+        print(call.data)
     else:
         session = db_session.create_session()
         text = call.message.text.split("\n")
         now_page = int(text[0].split()[1])
         text = []
-        nomer = int(call.data)
+        nomer = int(call.data.split()[0])
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        user_like_people = session.query(Boss).filter(Boss.tg_id == call.message.chat.id).first()
         _list = search(tg_id=call.message.chat.id)
         chelik = session.query(People).filter(People.id == _list[nomer - 1].id).first()
         text.append(f"{chelik.job}")
         text.append("")
-        text.append(f"{chelik.salary}")
+        text.append(f"{int(chelik.salary)} руб.")
         text.append(f"{chelik.employment}")
         text.append("")
         text.append(
             f"{chelik.experience if len(chelik.experience) <= 250 else f'{chelik.experience[: 250]}(Подробнее в полном резюме)'}")
-        buttons = buttons_creator({"1": {
+        dictt = {"1": {
             f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
             'Контакты': 'cont',
             'Полное резюме': 'full'
-        }})
+        }}
+        try:
+            if user_like_people.phone:
+                dictt["2"] = {
+                    f"{emojize(SMILE[3], use_aliases=True) if str(chelik.id) in user_like_people.liked else emojize(SMILE[2], use_aliases=True)}": f"like {chelik.id}"}
+        except Exception:
+            pass
+        buttons = buttons_creator(dictt)
         text = "\n".join(text)
-        user.count = int(call.data)
+        user.count = int(call.data.split()[0])
         session.commit()
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons)
         # print(f"\033[0m{call.message.text}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about"])
+@bot.callback_query_handler(
+    func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about"] or "like" in call.data)
 def callback2(call):
     """
     работа с определённым пользователем для списка
@@ -1254,23 +1331,28 @@ def callback2(call):
         session = db_session.create_session()
         user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
         list_poiska = search(call.message.chat.id)
-        key_dict = {"1": {"<": "back"}}
+        key_dict = {"1": {}}
+        if len(list_poiska) > 5:
+            key_dict["1"]["<"] = "back"
         text = call.message.text.split("\n")
         nomer = user.count
         text = [
             f"Страница {nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1} из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}",
             ""]
-        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
-                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
+        for i in range((5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5) if len(
+            list_poiska) != 5 else 5):
             nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
             string = f"{1 + i}. {list_poiska[nomer1 * 5 + i].job}\n{int(list_poiska[nomer1 * 5 + i].salary)} р."
             text.append(string)
         text = "\n".join(text)
-        for i in range(5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
-                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5):
+        for i in range((5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5) if len(
+            list_poiska) != 5 else 5):
             hz = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
-            key_dict["1"][f"{hz * 5 + i + 1}"] = f"{hz * 5 + i + 1}"
-        key_dict["1"][">"] = "next"
+            key_dict["1"][f"{hz * 5 + i + 1}"] = f"{hz * 5 + i + 1} rab"
+        if len(list_poiska) > 5:
+            key_dict["1"][">"] = "next"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
     elif call.data == 'return1':
@@ -1359,6 +1441,51 @@ def callback2(call):
         session.commit()
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return1'}})
         bot.send_document(call.message.chat.id, open("data/media/resume.pdf", 'rb'), reply_markup=buttons)
+    elif "like" in call.data:
+        session = db_session.create_session()
+        user = session.query(Boss).filter(Boss.tg_id == call.message.chat.id).first()
+        if call.data.split()[1] in user.liked:
+            _list = user.liked.split(',')
+            new_list = []
+            for i in _list:
+                if i.isdigit():
+                    new_list.append(i)
+            _list = new_list
+            _list.pop(_list.index(call.data.split()[1]))
+            user.liked = ",".join(_list)
+            session.commit()
+            text = call.message.text
+            buttons = buttons_creator({"1": {
+                f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
+                'Контакты': 'cont',
+                'Полное резюме': 'full'
+            },
+                "2": {
+                    f"{emojize(SMILE[2], use_aliases=True)}": f"like {call.data.split()[1]}"}
+            })
+            bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                                  reply_markup=buttons)
+        else:
+            aboba = user.liked.split(",")
+            new_list = []
+            for i in aboba:
+                if i.isdigit():
+                    new_list.append(i)
+            aboba = new_list
+            aboba.append(call.data.split()[1])
+            user.liked = ",".join(aboba)
+            session.commit()
+            text = call.message.text
+            buttons = buttons_creator({"1": {
+                f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
+                'Контакты': 'cont',
+                'Полное резюме': 'full'
+            },
+                "2": {
+                    f"{emojize(SMILE[3], use_aliases=True)}": f"like {call.data.split()[1]}"}
+            })
+            bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                                  reply_markup=buttons)
 
 
 for _ in range(10):
