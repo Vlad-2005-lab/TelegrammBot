@@ -547,12 +547,12 @@ def have_vacancy(message):
                            "Удалить всю информацию о себе"]
         try:
             if len(user_like_people.liked) > 0:
-                list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
+                list_of_buttons.insert(1, ["Избранные работы", "Очистить список работ"])
         except Exception:
             pass
         try:
             if len(user_like_boss.liked) > 0:
-                list_of_buttons.insert(1, ["Посмотреть избранные работы", "Очистить список"])
+                list_of_buttons.insert(1, ["Избранные работники", "Очистить список работников"])
         except Exception:
             pass
         aboba = []
@@ -569,7 +569,7 @@ def have_vacancy(message):
         for i in aboba:
             list_of_buttons.insert(1, i)
         keyboard = keyboard_creator(list_of_buttons)
-        bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
+        bot.send_message(message.from_user.id, f"Вы в главном меню", reply_markup=keyboard)
         return bot.register_next_step_handler(message, main_menu)
     bot.send_message(message.from_user.id, f"Здраствуйте")
     bot.send_message(message.from_user.id, f"Что вас интересует?", reply_markup=keyboard)
@@ -1165,6 +1165,74 @@ def main_menu(message):
         session.delete(user_like_boss)
         session.commit()
         return have_vacancy(message)
+    elif message.text == "Резюме работодателя":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Резюме работника":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Создать резюме работодателя":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Создать резюме работника":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Запись на обучение":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Избранные работники":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Избранные работы":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Очистить список работников":
+        session = db_session.create_session()
+        chel = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
+        chel.liked = ""
+        session.commit()
+        user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
+        user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
+        list_of_buttons = [["Поиск работника", "Поиск работы"],
+                           "Запись на обучение",
+                           "Удалить всю информацию о себе"]
+        try:
+            if len(user_like_people.liked) > 0:
+                list_of_buttons.insert(1, ["Посмотреть избранных работников", "Очистить список"])
+        except Exception:
+            pass
+        try:
+            if len(user_like_boss.liked) > 0:
+                list_of_buttons.insert(1, ["Посмотреть избранные вакансии", "Очистить список"])
+        except Exception:
+            pass
+        aboba = []
+        try:
+            if user_like_people.phone:
+                aboba.append(["Открыть резюме работника", "Удалить резюме работника"])
+        except Exception:
+            aboba.append("Создать резюме работника")
+        try:
+            if user_like_boss.phone:
+                aboba.append(["Открыть резюме работодателя", "Удалить резюме работодателя"])
+        except Exception:
+            aboba.append("Создать резюме работодателя")
+        for i in aboba:
+            list_of_buttons.insert(1, i)
+        keyboard = keyboard_creator(list_of_buttons)
+        bot.send_message(message.from_user.id, f"Вы в главном меню", reply_markup=keyboard)
+        return bot.register_next_step_handler(message, main_menu)
+    elif message.text == "Очистить список работ":
+        bot.send_message(message.from_user.id,
+                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        return bot.register_next_step_handler(message, main_menu)
     else:
         user_like_boss = session.query(Boss).filter(Boss.tg_id == message.from_user.id).first()
         user_like_people = session.query(People).filter(People.tg_id == message.from_user.id).first()
@@ -1195,12 +1263,15 @@ def main_menu(message):
         for i in aboba:
             list_of_buttons.insert(1, i)
         keyboard = keyboard_creator(list_of_buttons)
-        bot.send_message(message.from_user.id, f"Вы в глваном меню", reply_markup=keyboard)
+        bot.send_message(message.from_user.id, f"Вы в главном меню", reply_markup=keyboard)
         return bot.register_next_step_handler(message, main_menu)
 
 
 @bot.callback_query_handler(
-    func=lambda call: (call.data.split()[0].isdigit() and ((call.data.split()[1] in ["boss", "rab"]) if " " in call.data else 0) or call.data in ['next', 'back', "back_boss", "next_boss"]))
+    func=lambda call: (call.data.split()[0].isdigit() and (
+            (call.data.split()[1] in ["boss", "rab"]) if " " in call.data else 0) or call.data in ['next', 'back',
+                                                                                                   "back_boss",
+                                                                                                   "next_boss"]))
 def callback_worker(call):
     """
     это навигация в самом списке подходящих людей
@@ -1277,12 +1348,109 @@ def callback_worker(call):
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
                               reply_markup=buttons_creator(key_dict))
     elif call.data == "back_boss":
-        print(call.data)
+        text = call.message.text.split("\n")
+        now_page = int(text[0].split()[1])
+        if now_page - 1 >= 1:
+            text[0] = f"Страница {now_page - 1} из {int(text[0].split()[3])}"
+            key_dict = {"1": {"<": "back_boss"}}
+            for gg in range(1, 6):
+                key_dict["1"][f"{(now_page - 2) * 5 + gg}"] = f"{(now_page - 2) * 5 + gg} boss"
+            key_dict["1"][">"] = "next_boss"
+            list_poiska = search_workers(call.message.chat.id)
+            text = text[: 2]
+            for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                text.append(
+                    f"{1 + i}. {list_poiska[5 * (now_page - 2) + i].job}\n{int(list_poiska[5 * (now_page - 2) + i].salary)} р.")
+            text = "\n".join(text)
+        else:
+            text[0] = f"Страница {int(text[0].split()[3])} из {int(text[0].split()[3])}"
+            list_poiska = search_workers(call.message.chat.id)
+            key_dict = {"1": {"<": "back_boss"}}
+            now_page = int(text[0].split()[3]) - 1
+            for i in range((len(list_poiska) - 1) % 5 + 1):
+                key_dict["1"][f"{now_page * 5 + 1 + i}"] = f"{now_page * 5 + 1 + i} boss"
+            key_dict["1"][">"] = "next_boss"
+            text = text[: 2]
+            for i in range((len(list_poiska) - 1) % 5 + 1):
+                text.append(
+                    f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)} р.")
+            text = "\n".join(text)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons_creator(key_dict))
     elif call.data == "next_boss":
-        print(call.data)
+        text = call.message.text.split("\n")
+        list_poiska = search_workers(call.message.chat.id)
+        now_page = int(text[0].split()[1])
+        if now_page + 1 <= int(text[0].split()[3]):
+            if now_page + 1 != int(text[0].split()[3]):
+                text[0] = f"Страница {now_page + 1} из {int(text[0].split()[3])}"
+                key_dict = {"1": {"<": "back_boss"}}
+                for gg in range(1, 6):
+                    key_dict["1"][f"{now_page * 5 + gg}"] = f"{now_page * 5 + gg} boss"
+                key_dict["1"][">"] = "next_boss"
+                text = text[: 2]
+                for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                    text.append(
+                        f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)}  р.")
+                text = "\n".join(text)
+            else:
+                text[0] = f"Страница {now_page + 1} из {int(text[0].split()[3])}"
+                key_dict = {"1": {"<": "back_boss"}}
+                for i in range((len(list_poiska) - 1) % 5 + 1):
+                    key_dict["1"][f"{now_page * 5 + i + 1}"] = f"{now_page * 5 + 1 + i} boss"
+                key_dict["1"][">"] = "next_boss"
+                text = text[: 2]
+                for i in range((len(list_poiska) - 1) % 5 + 1):
+                    text.append(
+                        f"{1 + i}. {list_poiska[5 * now_page + i].job}\n{int(list_poiska[5 * now_page + i].salary)}  р.")
+                text = "\n".join(text)
+        else:
+            text[0] = f"Страница 1 из {int(text[0].split()[3])}"
+            key_dict = {"1": {"<": "back_boss"}}
+            for gg in range(1, 6):
+                key_dict["1"][f"{gg}"] = f"{gg} boss"
+            key_dict["1"][">"] = "next_boss"
+            text = text[: 2]
+            for i in range(5 if len(list_poiska) >= 5 else len(list_poiska) % 5):
+                text.append(f"{1 + i}. {list_poiska[i].job}\n{int(list_poiska[i].salary)} р.")
+            text = "\n".join(text)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons_creator(key_dict))
     elif call.data.split()[1] == "boss" and call.data.split()[0].isdigit():
-        print(call.data)
-    else:
+        session = db_session.create_session()
+        text = call.message.text.split("\n")
+        now_page = int(text[0].split()[1])
+        text = []
+        nomer = int(call.data.split()[0])
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        user_like_people = session.query(People).filter(People.tg_id == call.message.chat.id).first()
+        _list = search_workers(tg_id=call.message.chat.id)
+        chelik = session.query(Boss).filter(Boss.id == _list[nomer - 1].id).first()
+        text.append(f"{chelik.name_vacancy}")
+        text.append("")
+        text.append(f"{int(chelik.salary)} руб.")
+        text.append(f"{chelik.timetable}")
+        text.append("")
+        text.append(
+            f"{chelik.trebovanija if len(chelik.trebovanija) <= 250 else f'{chelik.trebovanija[: 250]}(Подробнее в полном резюме)'}")
+        dictt = {"1": {
+            f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return_boss',
+            'Контакты': 'cont_boss',
+            'Полное резюме': 'full_boss'
+        }}
+        try:
+            if user_like_people.phone:
+                dictt["2"] = {
+                    f"{emojize(SMILE[3], use_aliases=True) if str(chelik.id) in user_like_people.liked else emojize(SMILE[2], use_aliases=True)}": f"like {chelik.id} boss"}
+        except Exception:
+            pass
+        buttons = buttons_creator(dictt)
+        text = "\n".join(text)
+        user.count = int(call.data.split()[0])
+        session.commit()
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons)
+    elif call.data.split()[1] == "rab" and call.data.split()[0].isdigit():
         session = db_session.create_session()
         text = call.message.text.split("\n")
         now_page = int(text[0].split()[1])
@@ -1307,7 +1475,7 @@ def callback_worker(call):
         try:
             if user_like_people.phone:
                 dictt["2"] = {
-                    f"{emojize(SMILE[3], use_aliases=True) if str(chelik.id) in user_like_people.liked else emojize(SMILE[2], use_aliases=True)}": f"like {chelik.id}"}
+                    f"{emojize(SMILE[3], use_aliases=True) if str(chelik.id) in user_like_people.liked else emojize(SMILE[2], use_aliases=True)}": f"like {chelik.id} rab"}
         except Exception:
             pass
         buttons = buttons_creator(dictt)
@@ -1320,7 +1488,7 @@ def callback_worker(call):
 
 
 @bot.callback_query_handler(
-    func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about"] or "like" in call.data)
+    func=lambda call: call.data in ['return', "return1", 'cont', 'full', "about", "about_boss", "return_boss", "cont_boss", "full_boss"] or "like" == call.data.split()[0])
 def callback2(call):
     """
     работа с определённым пользователем для списка
@@ -1441,7 +1609,138 @@ def callback2(call):
         session.commit()
         buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return1'}})
         bot.send_document(call.message.chat.id, open("data/media/resume.pdf", 'rb'), reply_markup=buttons)
-    elif "like" in call.data:
+    elif call.data == "cont_boss":
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        data = Data()
+        text = call.message.text.split("\n")
+        text = []
+        nomer = user.count
+        text.append("Вот контактная информация:")
+        text.append("")
+        _list = search_workers(call.message.chat.id)
+        chelik = session.query(Boss).filter(Boss.id == _list[nomer - 1].id).first()
+        text.append(f"{chelik.fio}")
+        text.append(f"{chelik.phone}")
+        text.append(f"{chelik.email}")
+        text = "\n".join(text)
+        data.tg_id_boss = call.message.message_id
+        data.arg1 = user.arg1
+        data.arg2 = user.arg2
+        data.arg3 = user.arg3
+        data.tg_id_people = chelik.id
+        session.add(data)
+        session.commit()
+        buttons = buttons_creator({'1': {f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'about_boss'}})
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons)
+    elif call.data == "full_boss":
+        pass
+    elif call.data == "return_boss":
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        list_poiska = search_workers(call.message.chat.id)
+        key_dict = {"1": {}}
+        if len(list_poiska) > 5:
+            key_dict["1"]["<"] = "back_boss"
+        text = call.message.text.split("\n")
+        nomer = user.count
+        text = [
+            f"Страница {nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1} из {len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1}",
+            ""]
+        for i in range((5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5) if len(
+            list_poiska) != 5 else 5):
+            nomer1 = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
+            string = f"{1 + i}. {list_poiska[nomer1 * 5 + i].job}\n{int(list_poiska[nomer1 * 5 + i].salary)} р."
+            text.append(string)
+        text = "\n".join(text)
+        for i in range((5 if (len(list_poiska) // 5 if len(list_poiska) % 5 == 0 else len(list_poiska) // 5 + 1) != (
+                nomer // 5 if nomer % 5 == 0 else nomer // 5 + 1) else len(list_poiska) % 5) if len(
+            list_poiska) != 5 else 5):
+            hz = nomer // 5 - 1 if nomer % 5 == 0 else nomer // 5
+            key_dict["1"][f"{hz * 5 + i + 1}"] = f"{hz * 5 + i + 1} boss"
+        if len(list_poiska) > 5:
+            key_dict["1"][">"] = "next_boss"
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons_creator(key_dict))
+    elif call.data == "about_boss":
+        session = db_session.create_session()
+        user = session.query(Ban).filter(Ban.tg_id == call.message.chat.id).first()
+        text = call.message.text.split("\n")
+        text = []
+        nomer = user.count
+        _list = search_workers(call.message.chat.id)
+        chelik = session.query(Boss).filter(Boss.id == _list[nomer - 1].id).first()
+        user_like_people = session.query(Boss).filter(Boss.tg_id == call.message.chat.id).first()
+        text.append(f"{chelik.name_vacancy}")
+        text.append("")
+        text.append(f"{chelik.salary}")
+        text.append(f"{chelik.timetable}")
+        text.append("")
+        text.append(
+            f"{chelik.trebovanija if len(chelik.trebovanija) <= 250 else f'{chelik.trebovanija[: 250]}(Подробнее в полном резюме)'}")
+        dictt = {"1": {
+            f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return_boss',
+            'Контакты': 'cont_boss',
+            'Полное резюме': 'full_boss'
+        }}
+        try:
+            if user_like_people.phone:
+                dictt["2"] = {
+                    f"{emojize(SMILE[3], use_aliases=True) if str(chelik.id) in user_like_people.liked else emojize(SMILE[2], use_aliases=True)}": f"like {chelik.id} boss"}
+        except Exception:
+            pass
+        buttons = buttons_creator(dictt)
+        text = "\n".join(text)
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                              reply_markup=buttons)
+    elif "like" == call.data.split()[0] and "boss" == call.data.split()[2]:
+        session = db_session.create_session()
+        user = session.query(People).filter(People.tg_id == call.message.chat.id).first()
+        if call.data.split()[1] in user.liked:
+            _list = user.liked.split(',')
+            new_list = []
+            for i in _list:
+                if i.isdigit():
+                    new_list.append(i)
+            _list = new_list
+            _list.pop(_list.index(call.data.split()[1]))
+            user.liked = ",".join(_list)
+            session.commit()
+            text = call.message.text
+            buttons = buttons_creator({"1": {
+                f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
+                'Контакты': 'cont',
+                'Полное резюме': 'full'
+            },
+                "2": {
+                    f"{emojize(SMILE[2], use_aliases=True)}": f"like {call.data.split()[1]}"}
+            })
+            bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                                  reply_markup=buttons)
+        else:
+            aboba = user.liked.split(",")
+            new_list = []
+            for i in aboba:
+                if i.isdigit():
+                    new_list.append(i)
+            aboba = new_list
+            aboba.append(call.data.split()[1])
+            user.liked = ",".join(aboba)
+            session.commit()
+            text = call.message.text
+            buttons = buttons_creator({"1": {
+                f"{emojize(SMILE[0], use_aliases=True)} Вернуться назад": 'return',
+                'Контакты': 'cont',
+                'Полное резюме': 'full'
+            },
+                "2": {
+                    f"{emojize(SMILE[3], use_aliases=True)}": f"like {call.data.split()[1]}"}
+            })
+            bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
+                                  reply_markup=buttons)
+    elif "like" == call.data.split()[0] and "rab" == call.data.split()[2]:
         session = db_session.create_session()
         user = session.query(Boss).filter(Boss.tg_id == call.message.chat.id).first()
         if call.data.split()[1] in user.liked:
