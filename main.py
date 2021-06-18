@@ -543,8 +543,7 @@ def have_vacancy(message):
     if hz > 0:
         bot.send_message(message.from_user.id, f"Здраствуйте")
         list_of_buttons = [["Поиск работника", "Поиск работы"],
-                           "Запись на обучение",
-                           "Удалить всю информацию о себе"]
+                           "Запись на обучение"]
         try:
             if len(user_like_people.liked) > 0:
                 list_of_buttons.insert(1, ["Избранные вакансии", "Очистить список вакансии"])
@@ -563,7 +562,7 @@ def have_vacancy(message):
             aboba.append("Оставить резюме")
         try:
             if user_like_boss.phone:
-                aboba.append(["Моя вакансия", "Удалить вакансию"])
+                aboba.append(["Моя вакансия", "" if user_like_boss.spratan else "Скрыть вакансию"])
         except Exception:
             aboba.append("Оставить вакансию")
         for i in aboba:
@@ -653,7 +652,7 @@ def vilka(message):
             return bot.register_next_step_handler(message, staks, who=1)
         elif message.text == "Оставить вакансию":
             bot.send_message(message.from_user.id,
-                             f"Введите своё имя.",
+                             f"Введите название компании.",
                              reply_markup=keyboard)
             return bot.register_next_step_handler(message, start_creating_vacancy)
         elif message.text == "Оставить резюме":
@@ -755,26 +754,12 @@ def start_creating_tender(message):
             return have_vacancy(message)
         else:
             bos = People()
-            bos.name = message.text
             bos.tg_id = message.from_user.id
+            bos.name_of_compamy = message.text
             bos.count = 1
-            bos.salary = 0
-            bos.birth_date = ""
-            bos.phone = ""
-            bos.mail = ""
-            bos.city = ""
-            bos.job = ""
-            bos.schedule = ""
-            bos.employment = ""
-            bos.experience = ""
-            bos.achievements = ""
-            bos.education = ""
-            bos.about_me = ""
-            bos.tags = ""
-            bos.liked = ""
             session.add(bos)
             session.commit()
-            bot.send_message(message.from_user.id, f"Введите дату рождения.", reply_markup=keyboard)
+            bot.send_message(message.from_user.id, f"Введите название вакансии.", reply_markup=keyboard)
             return bot.register_next_step_handler(message, creating_tender)
     except Exception as er:
         print(er)
@@ -980,14 +965,10 @@ def creating_tender(message):
             session.commit()
             return have_vacancy(message)
         elif user.count == 1:
-            date = ""
-            for i in message.text:
-                if i.isdigit() or i == ".":
-                    date += i
-            user.birth_date = date
+            user.name_vacancy = message.text
             user.count += 1
             session.commit()
-            bot.send_message(message.from_user.id, f"Введите свой телефон.")
+            bot.send_message(message.from_user.id, f"Введите требования .")
             return bot.register_next_step_handler(message, creating_tender)
         elif user.count == 2:
             phone = ""
@@ -1444,9 +1425,11 @@ def main_menu(message):
                          f"Эта функция в находится разработке. Выберите другой вариант в меню.")
         return bot.register_next_step_handler(message, main_menu)
     elif message.text == "Оставить вакансию":
+        keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
         bot.send_message(message.from_user.id,
-                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
-        return bot.register_next_step_handler(message, main_menu)
+                         f"Введите название компании.",
+                         reply_markup=keyboard)
+        return bot.register_next_step_handler(message, start_creating_vacancy)
     elif message.text == "Оставить резюме":
         keyboard = keyboard_creator([f"{emojize(SMILE[1], use_aliases=True)} Вернуться в меню"])
         bot.send_message(message.from_user.id,
@@ -1476,8 +1459,22 @@ def main_menu(message):
         bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
         return bot.register_next_step_handler(message, main_menu)
     elif message.text == "Избранные вакансии":
-        bot.send_message(message.from_user.id,
-                         f"Эта функция в находится разработке. Выберите другой вариант в меню.")
+        text = []
+        _list = liked(message.from_user.id)
+        text.append(f"Страница 1 из {len(_list) // 5 if len(_list) % 5 == 0 else len(_list) // 5 + 1}")
+        key_dict = {'1': {}}
+        if len(_list) > 5:
+            key_dict["1"]["<"] = "back_liked_rab"
+        for gg in range(1, len(_list) + 1):
+            key_dict["1"][f"{gg}"] = f"{gg} liked_rab"
+        if len(_list) > 5:
+            key_dict["1"][">"] = "next_liked_rab"
+        text.append("")
+        for i in range(5 if len(_list) >= 5 else len(_list) % 5):
+            text.append(
+                f"{1 + i}. {_list[i].job}\n{int(_list[i].salary)} р.")
+        text = "\n".join(text)
+        bot.send_message(message.from_user.id, text, reply_markup=buttons_creator(key_dict))
         return bot.register_next_step_handler(message, main_menu)
     elif message.text == "Очистить список резюме":
         session = db_session.create_session()
@@ -1504,12 +1501,12 @@ def main_menu(message):
             if user_like_people.phone:
                 aboba.append(["Открыть резюме работника", "Удалить резюме работника"])
         except Exception:
-            aboba.append("Создать резюме работника")
+            aboba.append("Создать резюме")
         try:
             if user_like_boss.phone:
                 aboba.append(["Открыть резюме работодателя", "Удалить резюме работодателя"])
         except Exception:
-            aboba.append("Создать резюме работодателя")
+            aboba.append("Создать вакансию")
         for i in aboba:
             list_of_buttons.insert(1, i)
         keyboard = keyboard_creator(list_of_buttons)
@@ -1538,12 +1535,12 @@ def main_menu(message):
         aboba = []
         try:
             if user_like_people.phone:
-                aboba.append(["Резюме работника", "Удалить работника"])
+                aboba.append(["Резюме работника", "Удалить резюме"])
         except Exception:
             aboba.append("Создать резюме работника")
         try:
             if user_like_boss.phone:
-                aboba.append(["Резюме работодателя", "Удалить работодателя"])
+                aboba.append(["Резюме работодателя", "" if user_like_boss.spratan else "Скрыть вакансию"])
         except Exception:
             aboba.append("Создать резюме работодателя")
         for i in aboba:
@@ -1560,7 +1557,9 @@ def main_menu(message):
                                                                                                                  "back_boss",
                                                                                                                  "next_boss",
                                                                                                                  "back_liked_boss",
-                                                                                                                 "next_liked_boss"]))
+                                                                                                                 "next_liked_boss",
+                                                                                                                 "back_liked_rab",
+                                                                                                                 "next_liked_rab"]))
 def callback_worker(call):
     """
     это навигация в самом списке подходящих людей
